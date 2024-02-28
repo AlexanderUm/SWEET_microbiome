@@ -200,7 +200,7 @@ var.use <- c(Time = "Time", Subject = "Subject",
              Plate = "Plate", CID = "CID") 
 
 #-------------------------------------------------------------------------------
-# Aestetics for plots 
+# Aesthetics for plots 
 #-------------------------------------------------------------------------------
 aest.ls <- list(color_gr = setNames(c("#377EB8", "red4"), 
                                     unique(ps1.meta.f[[var.use["Group"]]])), 
