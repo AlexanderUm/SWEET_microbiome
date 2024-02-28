@@ -1,21 +1,16 @@
 #-------------------------------------------------------------------------------
 # Variables
 #-------------------------------------------------------------------------------
-# List of distances to use
-used.dist <- c("unifrac", "wunifrac", "jaccard", "bray")
-
-rda.form <- as.formula("dist.inst ~ Group + Condition(Country)")
-
-adon.form <- as.formula("dist.inst ~ Group")
-
-adon.form.cov <- as.formula("dist.inst ~ Country + Group")
-
-data.set <- "all"
-
-phys.lvl <- c("css_ASV", "css_Genus")
-
-nperm <- 199
-
+# List of variables
+beta.vars.ls <- list(Distances = c("unifrac", "wunifrac", "jaccard", "bray"), 
+                      RDA_f_full = "Time*Group + Condition(Country)",
+                      strata_RDA_f = "Group + Condition(Country)", 
+                      starta_adonis_f = "Group",
+                      starta_adonis_f_cov = "Country + Group",
+                      data_set = "all", 
+                      used_ps = c("css_ASV", "css_Genus"), 
+                      used_perm = 999, 
+                      Strata_var = "Time")
 
 #-------------------------------------------------------------------------------
 # Load libraries and set the environment 
@@ -34,7 +29,6 @@ rm(list = c("i", "libs.list"))
 load("out/supp/data_bundel.Rdata")
 
 
-
 ################################################################################
 # Beta diversity per time point 
 ################################################################################
@@ -46,7 +40,8 @@ pcoa.pair.plots <- list()
 beta.stat.summary <- NULL
 
 
-for (i.tp in levels(meta.ls[[data.set]][[var.use["CID"]]])) {
+
+for (i.tp in levels(meta.ls[[beta.vars.ls$data_set]][[var.use["CID"]]])) {
   
   # Exact metadata for time point
   meta.inst <- meta.ls[[data.set]] %>%

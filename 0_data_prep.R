@@ -199,6 +199,11 @@ var.use <- c(Time = "Time", Subject = "Subject",
              Group = "Group", Country = "Country", 
              Plate = "Plate", CID = "CID") 
 
+
+################################################################################
+# Variables for following analysis 
+################################################################################
+
 #-------------------------------------------------------------------------------
 # Aesthetics for plots 
 #-------------------------------------------------------------------------------
@@ -210,6 +215,40 @@ aest.ls <- list(color_gr = setNames(c("#377EB8", "red4"),
                                          unique(ps1.meta.f[[var.use["Country"]]])))
 
 
-save(list = c("pss.ls", "meta.ls", "aest.ls", "var.use", 
-              "meta.path", "min.reads.tax", "prev.da.cut.off"), 
+#-------------------------------------------------------------------------------
+# Variables for alpha diversity
+#-------------------------------------------------------------------------------
+alpha.vars.ls <- list(alpha_ind = c("shannon", "simpson", 
+                                    "observed_species", "chao1"), 
+                      used_ps = c("rare_ASV", "rare_Genus"), 
+                      data_set = c("all", "CIDs_3", "CIDs_4"),
+                      time_var = "Time", 
+                      subject_var = "Subject", 
+                      group_var = "Group", 
+                      adjust_var = "Country")
+
+#-------------------------------------------------------------------------------
+# Variables for beta diversity
+#-------------------------------------------------------------------------------
+beta.vars.ls <- list(Distances = c(#"unifrac", "wunifrac", 
+                                   "jaccard", "bray"),
+                    used_ps = c("css_ASV", "css_Genus"), 
+                    used_perm = 19,
+                    test_var = "Group", 
+                    full_RDA_f = "Time*Group + Condition(Country)",
+                    full_data_set = c("all", "CIDs_3", "CIDs_4"),
+                    strata_var = "Time",
+                    strata_RDA_f = "Group + Condition(Country)", 
+                    strata_adonis_f = "Group",
+                    strata_adonis_f_cov = "Country + Group",
+                    strata_data_set = "all", 
+                    p_color_var = "Group", 
+                    p_shape_var = "CID", 
+                    p_group_var = "Subject")
+
+
+
+
+save(list = c("pss.ls", "meta.ls", "aest.ls", 
+              "alpha.vars.ls", "beta.vars.ls"), 
      file = "out/supp/data_bundel.Rdata")
