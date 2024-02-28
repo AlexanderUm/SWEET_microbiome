@@ -9,6 +9,8 @@ min.reads.tax <- 50
 
 prev.da.cut.off <- 0.5
 
+glom.lvls <- c("Genus", "Family")
+
 #-------------------------------------------------------------------------------
 # Set environment 
 #-------------------------------------------------------------------------------
@@ -77,7 +79,6 @@ ps1.meta.f <- ps1.meta.f[sample_names(ps1), ]
 sample_data(ps1) <- ps1.meta.f
 
 
-
 #-------------------------------------------------------------------------------
 # Filter out taxa
 #-------------------------------------------------------------------------------
@@ -96,84 +97,84 @@ ps1 <- prune_taxa(!is.na(tax_table(ps1)[, "Phylum"])[, "Phylum"], ps1)
 ps1 <- prune_taxa(tax_table(ps1)[, "Kingdom"] %in% c("d__Bacteria", "d__Archaea"), 
                   ps1)
 
-# Change ASV IDs to shortened taxonomic names 
-taxa_names(ps1) <- make.unique(phy_shorten_tax_names(ps1))
-
-# Genus level 
-ps1.genus <- tax_glom(ps1, "Genus")
-
-taxa_names(ps1.genus) <- make.unique(phy_shorten_tax_names(ps1.genus))
-
-# Family level 
-ps1.family <- tax_glom(ps1, "Family")
-
-taxa_names(ps1.family) <- make.unique(phy_shorten_tax_names(ps1.family))
-
-
-pss.ls <- list(all = list(ASV = ps1, 
-                          Genus = ps1.genus, 
-                          Family = ps1.family))
-
-
 
 #-------------------------------------------------------------------------------
-# Filter and normalized
+# Glom to higher taxonomic level
 #-------------------------------------------------------------------------------
-for(i.gr in c(0, 3, 4)) {
+pss.ls <- list(all = list(ASV = ps1))
+
+for(i.lvl in glom.lvls)  {
   
-  for(i.ps in names(pss.ls$all)) {
-    
-    if(i.gr == 3) {
-      
-      meta <- filter(ps1.meta.f, CID != "CID_1") 
-      
-    } else {meta <- ps1.meta.f}
-    
-    
-    if(i.gr == 0) {
-      
-      ps.f <- pss.ls$all[[i.ps]] 
-      
-      name.add <- "all"
-      
-    } else {
-      
-      name.add <- paste0("CIDs_", i.gr)   
-      
-      meta <- meta %>% 
+  pss.ls$all[[i.lvl]] <- tax_glom(ps1, i.lvl)
+
+}
+
+
+#-------------------------------------------------------------------------------
+# Adjust taxa names 
+#-------------------------------------------------------------------------------
+for(i.lvl in names(pss.ls$all)) {
+
+  taxa_names(pss.ls$all[[i.lvl]]) <- phy_shorten_tax_names(pss.ls$all[[i.lvl]]) %>% 
+                                                make.unique()
+}
+
+
+#-------------------------------------------------------------------------------
+# Create filtered subsets
+#-------------------------------------------------------------------------------
+gr.ls = list(CIDs_4 = c("CID_1", "CID_2", "CID_3", "CID_4"), 
+             CIDs_3 = c("CID_2", "CID_3", "CID_4"))
+
+for(gr in names(gr.ls)) {
+  
+  samp.id <- ps1.meta.f %>% 
+                filter(CID %in% gr.ls[[gr]]) %>% 
                 group_by(Subject) %>% 
-                filter(n() == i.gr) %>% 
-                ungroup() %>% 
-                droplevels() %>% 
-                mutate(RowNames = SeqID) %>% 
-                column_to_rownames("RowNames") 
-      
-      ps.f <- prune_samples(rownames(meta), pss.ls$all[[i.ps]]) 
-      
-    }
+                filter(n() == length(gr.ls[[gr]])) %>% 
+                pull(SeqID)
+  
+  for(i.lvl in names(pss.ls$all)) {
     
-    # Normalize count
-    pss.ls[[name.add]][[i.ps]] <- ps.f
-    
-    ps.f.rare <- rarefy_even_depth(ps.f, rngseed = 30476048)
-    
-    pss.ls[[name.add]][[paste0("rare_", i.ps)]] <- ps.f.rare
-    
-    otu_table(ps.f) <- ps.f %>% 
-      phyloseq_to_metagenomeSeq(.) %>% 
-      cumNorm(., p=cumNormStatFast(.)) %>% 
-      MRcounts(., norm=TRUE, log=TRUE) %>% 
-      as.data.frame() %>% 
-      otu_table(., taxa_are_rows = TRUE)
-    
-    pss.ls[[name.add]][[paste0("css_", i.ps)]] <- ps.f
+   pss.ls[[gr]][[i.lvl]] <- prune_samples(samp.id, pss.ls$all[[i.lvl]]) 
     
   }
   
 }
 
 
-# Metadata 
+#-------------------------------------------------------------------------------
+# Add ps objects with normalized counts  
+#-------------------------------------------------------------------------------
+for(i.set in names(pss.ls)) {
+  
+  for(i.lvl in names(pss.ls[[i.set]])) {
+    
+    ps.inst <- pss.ls[[i.set]][[i.lvl]]
+    
+    # Rarefaction 
+    ps.inst.rare <- rarefy_even_depth(ps.inst, rngseed = 30476048)
+    
+    pss.ls[[i.set]][[paste0("rare_", i.lvl)]] <- ps.inst.rare
+    
+    # CSS normalization
+    ps.inst.css <- ps.inst
+    
+    otu_table(ps.inst.css) <- ps.inst.css %>% 
+                                phyloseq_to_metagenomeSeq(.) %>% 
+                                cumNorm(., p=cumNormStatFast(.)) %>% 
+                                MRcounts(., norm=TRUE, log=TRUE) %>% 
+                                as.data.frame() %>% 
+                                otu_table(., taxa_are_rows = TRUE)
+    
+    pss.ls[[i.set]][[paste0("css_", i.lvl)]] <- ps.inst.css
+    
+  }
+}
+
+#-------------------------------------------------------------------------------
+# Extract Metadata per samples subset
+#-------------------------------------------------------------------------------
 meta.ls <- list()
 
 for(i.ps in names(pss.ls)) {
