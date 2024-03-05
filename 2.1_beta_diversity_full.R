@@ -76,7 +76,7 @@ for(i.grid in 1:nrow(var.grid)) {
   dist <- comb.dist[[i.gr]][[i.lvl]][[i.dist]]
   
   rda.form <- paste0("dist ~ ", beta.vars.ls$full_RDA_f) %>% 
-    as.formula()
+                as.formula()
   
   rda.obj <- dbrda(rda.form, data = meta.ls[[i.gr]])
   
