@@ -237,7 +237,8 @@ beta.vars.ls <- list(Distances = c(#"unifrac", "wunifrac",
                     test_var = "Group", 
                     full_RDA_f = "Time*Group + Condition(Country)",
                     full_data_set = c("all", "CIDs_3", "CIDs_4"),
-                    strata_var = "Time",
+                    strata_var = "CID",
+                    strata_var_levels = c("CID_1", "CID_2", "CID_3", "CID_4"),
                     strata_RDA_f = "Group + Condition(Country)", 
                     strata_adonis_f = "Group",
                     strata_adonis_f_cov = "Country + Group",
@@ -245,8 +246,6 @@ beta.vars.ls <- list(Distances = c(#"unifrac", "wunifrac",
                     p_color_var = "Group", 
                     p_shape_var = "CID", 
                     p_group_var = "Subject")
-
-
 
 
 save(list = c("pss.ls", "meta.ls", "aest.ls", 
