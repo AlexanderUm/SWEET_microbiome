@@ -1,15 +1,69 @@
-#-------------------------------------------------------------------------------
+################################################################################
 # Variables 
+################################################################################
+
 #-------------------------------------------------------------------------------
-qiime.path <- "data/qiime2/"
+# Variables for data perparation
+#-------------------------------------------------------------------------------
+d.prep.vars.ls <- list(qiime_path = "data/qiime2/", 
+                       meta_path = "data/meta_comb_to_check_mss(24)_MP_25012024_MMS.csv", 
+                       min_reads_per_taxa = 60, 
+                       glom_lvls = c("Genus", "Family"), 
+                       filt_subs = list(CIDs_4 = c("CID_1", "CID_2", "CID_3", "CID_4"), 
+                                        CIDs_3 = c("CID_2", "CID_3", "CID_4")))
 
-meta.path <- "data/meta_comb_to_check_mss(24)_MP_25012024_MMS.csv"
+#-------------------------------------------------------------------------------
+# Variables for alpha diversity
+#-------------------------------------------------------------------------------
+alpha.vars.ls <- list(alpha_ind = c("shannon", "simpson", 
+                                    "observed_species", "chao1"), 
+                      used_ps = c("rare_ASV", "rare_Genus"), 
+                      data_set = c("all", "CIDs_3", "CIDs_4"),
+                      time_var = "Time", 
+                      subject_var = "Subject", 
+                      group_var = "Group", 
+                      adjust_var = "Country")
 
-min.reads.tax <- 50
+#-------------------------------------------------------------------------------
+# Variables for beta diversity
+#-------------------------------------------------------------------------------
+beta.vars.ls <- list(Distances = c(#"unifrac", "wunifrac", 
+                      "jaccard", "bray"),
+                      used_ps = c("css_ASV", "css_Genus"), 
+                      used_perm = 199,
+                      test_var = "Group", 
+                      full_RDA_f = "Time*Group + Condition(Country)",
+                      full_data_set = c("all"),
+                      strata_var = "CID",
+                      strata_var_levels = c("CID_1", "CID_2", "CID_3", "CID_4"),
+                      strata_RDA_f = "Group + Condition(Country)", 
+                      strata_adonis_f = "Group",
+                      strata_adonis_f_cov = "Country + Group",
+                      strata_data_set = "all", 
+                      p_color_var = "Group", 
+                      p_shape_var = "CID", 
+                      p_group_var = "Subject")
 
-prev.da.cut.off <- 0.5
+#-------------------------------------------------------------------------------
+# Variables for DA
+#-------------------------------------------------------------------------------
+da.vars.ls <- list(used_ps = c("Genus", "Family"), 
+                   data_set = c("all"), 
+                   pairs_data_set = c("all"),
+                   pairs_var = "CID",
+                   pairs_var_levels = c("CID_1", "CID_2", "CID_3", "CID_4"),
+                   ref_lvl = "Sugar",
+                   min_prev = 0.5,
+                   subj_var = "Subject", 
+                   time_var = "Time", 
+                   group_var = "Group", 
+                   adjst_var = c("Country"))
 
-glom.lvls <- c("Genus", "Family")
+
+
+################################################################################
+# Data preparations
+################################################################################
 
 #-------------------------------------------------------------------------------
 # Set environment 
@@ -33,12 +87,12 @@ source("R/phy_shorten_tax_names.R")
 #-------------------------------------------------------------------------------
 # Read data/ Create phyloseq
 #-------------------------------------------------------------------------------
-ps1 <- qza_to_phyloseq(features = paste0(qiime.path, "asv_table.qza"), 
-                       tree = paste0(qiime.path, "tree/rooted-tree.qza"), 
-                       taxonomy = paste0(qiime.path, "taxonomy_07.qza"))
+ps1 <- qza_to_phyloseq(features = paste0(d.prep.vars.ls$qiime_path, "asv_table.qza"), 
+                       tree = paste0(d.prep.vars.ls$qiime_path, "tree/rooted-tree.qza"), 
+                       taxonomy = paste0(d.prep.vars.ls$qiime_path, "taxonomy_07.qza"))
 
 # Samples metadata
-ps1.meta <- read.csv(meta.path) %>% 
+ps1.meta <- read.csv(d.prep.vars.ls$meta_path) %>% 
                 mutate(across(everything(), \(x) trimWhiteSpace(x))) %>% 
                 mutate(rownamecol = SeqID) %>% 
                 column_to_rownames("rownamecol") %>% 
@@ -65,7 +119,10 @@ ps1.meta.f <- ps1.meta %>%
                                         levels = c("Sugar", "S&SEs")), 
                          Country = as.factor(country), 
                          Subject = as.factor(X_subject_id), 
-                         RowNAMES = SeqID)  %>% 
+                         RowNAMES = SeqID, 
+                         Body_weight = as.numeric(Body.weight), 
+                         Fasting_glucose = as.numeric(Fasting.glucose..mmol.L.), 
+                         HbA1c = as.numeric(HbA1c))  %>% 
                   mutate(GroupTime = interaction(Group, Time)) %>% 
                   column_to_rownames("RowNAMES")
 
@@ -83,7 +140,7 @@ sample_data(ps1) <- ps1.meta.f
 # Filter out taxa
 #-------------------------------------------------------------------------------
 # filter taxa with with less than X reads in total   
-ps1 <- prune_taxa(taxa_sums(ps1) >= min.reads.tax, ps1)
+ps1 <- prune_taxa(taxa_sums(ps1) >= d.prep.vars.ls$min_reads_per_taxa, ps1)
 
 # Remove ASVs: 
 # Kingdom: "d__Eukaryota", "Unassigned"
@@ -103,7 +160,7 @@ ps1 <- prune_taxa(tax_table(ps1)[, "Kingdom"] %in% c("d__Bacteria", "d__Archaea"
 #-------------------------------------------------------------------------------
 pss.ls <- list(all = list(ASV = ps1))
 
-for(i.lvl in glom.lvls)  {
+for(i.lvl in d.prep.vars.ls$glom_lvls)  {
   
   pss.ls$all[[i.lvl]] <- tax_glom(ps1, i.lvl)
 
@@ -123,15 +180,12 @@ for(i.lvl in names(pss.ls$all)) {
 #-------------------------------------------------------------------------------
 # Create filtered subsets
 #-------------------------------------------------------------------------------
-gr.ls = list(CIDs_4 = c("CID_1", "CID_2", "CID_3", "CID_4"), 
-             CIDs_3 = c("CID_2", "CID_3", "CID_4"))
-
-for(gr in names(gr.ls)) {
+for(gr in names(d.prep.vars.ls$filt_subs)) {
   
   samp.id <- ps1.meta.f %>% 
-                filter(CID %in% gr.ls[[gr]]) %>% 
+                filter(CID %in% d.prep.vars.ls$filt_subs[[gr]]) %>% 
                 group_by(Subject) %>% 
-                filter(n() == length(gr.ls[[gr]])) %>% 
+                filter(n() == length(d.prep.vars.ls$filt_subs[[gr]])) %>% 
                 pull(SeqID)
   
   for(i.lvl in names(pss.ls$all)) {
@@ -190,64 +244,26 @@ for(i.ps in names(pss.ls)) {
            Country = as.factor(Country), 
            Subject = as.factor(Subject), 
            GroupCID = as.factor(paste0(Group, ":", gsub("CID_", "c", CID))), 
-           CIDGroup = as.factor(paste0(gsub("CID_", "c", CID), ":", Group)))
+           CIDGroup = as.factor(paste0(gsub("CID_", "c", CID), ":", Group)), 
+           Body_weight = as.numeric(Body_weight), 
+           Fasting_glucose = as.numeric(Fasting_glucose), 
+           HbA1c = as.numeric(HbA1c))
   
 }
 
-
-var.use <- c(Time = "Time", Subject = "Subject", 
-             Group = "Group", Country = "Country", 
-             Plate = "Plate", CID = "CID") 
-
-
-################################################################################
-# Variables for following analysis 
-################################################################################
 
 #-------------------------------------------------------------------------------
 # Aesthetics for plots 
 #-------------------------------------------------------------------------------
 aest.ls <- list(color_gr = setNames(c("#377EB8", "red4"), 
-                                    unique(ps1.meta.f[[var.use["Group"]]])), 
+                                    unique(ps1.meta.f$Group)), 
                 shape_cid = setNames(c(15:18), 
-                                     na.omit(unique(ps1.meta.f[[var.use["CID"]]]))), 
+                                     na.omit(unique(ps1.meta.f$CID))), 
                 color_country = setNames(brewer.pal(4, "Set3"), 
-                                         unique(ps1.meta.f[[var.use["Country"]]])))
+                                         unique(ps1.meta.f$Country)))
 
 
-#-------------------------------------------------------------------------------
-# Variables for alpha diversity
-#-------------------------------------------------------------------------------
-alpha.vars.ls <- list(alpha_ind = c("shannon", "simpson", 
-                                    "observed_species", "chao1"), 
-                      used_ps = c("rare_ASV", "rare_Genus"), 
-                      data_set = c("all", "CIDs_3", "CIDs_4"),
-                      time_var = "Time", 
-                      subject_var = "Subject", 
-                      group_var = "Group", 
-                      adjust_var = "Country")
 
-#-------------------------------------------------------------------------------
-# Variables for beta diversity
-#-------------------------------------------------------------------------------
-beta.vars.ls <- list(Distances = c(#"unifrac", "wunifrac", 
-                                   "jaccard", "bray"),
-                    used_ps = c("css_ASV", "css_Genus"), 
-                    used_perm = 19,
-                    test_var = "Group", 
-                    full_RDA_f = "Time*Group + Condition(Country)",
-                    full_data_set = c("all", "CIDs_3", "CIDs_4"),
-                    strata_var = "CID",
-                    strata_var_levels = c("CID_1", "CID_2", "CID_3", "CID_4"),
-                    strata_RDA_f = "Group + Condition(Country)", 
-                    strata_adonis_f = "Group",
-                    strata_adonis_f_cov = "Country + Group",
-                    strata_data_set = "all", 
-                    p_color_var = "Group", 
-                    p_shape_var = "CID", 
-                    p_group_var = "Subject")
-
-
-save(list = c("pss.ls", "meta.ls", "aest.ls", 
-              "alpha.vars.ls", "beta.vars.ls"), 
+save(list = c("pss.ls", "meta.ls", "aest.ls", "d.prep.vars.ls", 
+              "alpha.vars.ls", "beta.vars.ls", "da.vars.ls"), 
      file = "out/supp/data_bundel.Rdata")

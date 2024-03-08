@@ -30,8 +30,6 @@ load("out/supp/alpha_res.Rdata")
 load("out/supp/beta_res.Rdata")
 load("out/supp/beta_pairs_res.Rdata")
 load("out/supp/da_vis.Rdata")
-load("out/supp/5.1_Resp_DA.Rdata")
-load("out/supp/5.3_Resp_Vis.Rdata")
 
 #-------------------------------------------------------------------------------
 # Custom function
@@ -61,8 +59,8 @@ plot_kable <- function(df, title) {
 #-----------------------------------------------------------------------------
 subchunkify <- function(g, fig_height=7, fig_width=5) {
                         g_deparsed <- paste0(deparse(
-                          function() {g}
-                        ), collapse = '')
+                                              function() {g}
+                                            ), collapse = '')
                         
                         sub_chunk <- paste0("`","``{r sub_chunk_", 
                                             floor(runif(1) * 10000), 
@@ -73,23 +71,19 @@ subchunkify <- function(g, fig_height=7, fig_width=5) {
                         cat(knitr::knit(text = knitr::knit_expand(text = sub_chunk), 
                                         quiet = TRUE))
                         
-                      }
+}
 
 ```
 
----
 
-# General inforamtion
-
----
 
 **General data filtering and preparations** \
 \
-All sequenced samples were combined with the provided metadata (`r d.prep.vars.ls$meta_path`). Only samples that was annotated as **1** (Sugar) or **2** (S&SEs) in column "*group*" where selected. If a sample (column "*UniqPartID*") was sequenced several time, the sequencing attempt with the highest total reads count was selected. \
+All sequenced samples were combined with the provided metadata (`r meta.path`). Only samples that was annotated as **1** (Sugar) or **2** (S&SEs) in column "*group*" where selected. If a sample (column "*UniqPartID*") was sequenced several time, the sequencing attempt with the highest total reads count was selected. \
 \
 In addition, factor columns "*Country*", "*Subject*", and interaction column "*GroupTime*" created with the function *interaction()* on "*Group*" and "*Time*" columns were added. The "*Time*" was encoded as the numeric representation of the month (`r sort(unique(meta.ls[[1]][["Time"]]))`) of sampling corresponding to CID. \
 \
-Taxa with less than `r d.prep.vars.ls$min_reads_per_taxa` reads across all samples were removed from the following analysis. As well as taxa assigned to "*Mitochondria*" and "*Chloroplast*", not assigned to any phylum, or assigned to kingdom other than "*Bacteria*" or "*Archaea*" were removed from the data set. \
+Taxa with less than `r min.reads.tax` reads across all samples were removed from the following analysis. As well as taxa assigned to "*Mitochondria*" and "*Chloroplast*", not assigned to any phylum, or assigned to kingdom other than "*Bacteria*" or "*Archaea*" were removed from the data set. \
 \
 \
 **Data sub-sets** \
@@ -187,11 +181,9 @@ for (i.meta in names(meta.ls)){
 
 Differences in alpha diversity trends between Sugar and S&SEs groups was assessed using *generate_alpha_trend_test_long()* function from the *MicrobiomeStat* package. In short, the method fits Linear Mix-effect Models (LMM) using a diversity metrics as the response variable. The method allows for addition of co-variates, analysis of linked data (time serious), as well as assessment of differences in diversity trends between groups (slopes interactions). \
 \
-As the first step `r paste0("**", alpha.vars.ls$alpha_ind, "**")` alpha diversity indexes were calculated from rarefied taxa tables on ASV and Genus taxonomic levels. The *mStat_calculate_alpha_diversity()* function was used to calculate alpha diversity indexes. \
+As the first step `r alpha.met[-length(alpha.met)]`, and `r alpha.met[length(alpha.met)]` alpha diversity indexes were calculated from rarefied taxa tables on ASV and Genus taxonomic levels. The *mStat_calculate_alpha_diversity()* function was used to calculate alpha diversity indexes. \
 \
-The calculated alpha diversity indexes were used as a response variable in LMM models build by *generate_alpha_trend_test_long()* function. Variable `r paste0("**", alpha.vars.ls$group_var, "**")`
-was used as the target variable, variable `r paste0("**", alpha.vars.ls$subject_var, "**")`
-was used as the random effect, variable `r paste0("**", alpha.vars.ls$time_var, "**")` was used as the time variable, and variable(s) `r paste0("**", alpha.vars.ls$adjust_var, "**")` were used as the adjustment variables (adj.vars). \
+The calculated alpha diversity indexes were used as a response variable in LMM models build by *generate_alpha_trend_test_long()* function. Variable `r var.use["Group"]` was used as the target variable (group.var), variable `r var.use["Subject"]` was used as the random effect (subject.var), variable `r var.use["Time"]` was used as the time variable (time.var), and variables `r var.use[c("Country", "Plate")]` were used as the adjustment variables (adj.vars). \
 \
 \
 Results were visualized with *ggplot2*. Plots below show changes in alpha diversity indexes over time per individual, thin half transparent lines, and mean value per group, thick solid lines. Summary of LMM model results shown at the top of a corresponding plot. Only estimate and significance of interaction between Time variable and target group (Sugar) in comparison with the interaction between Time and reference variable (S&SEs) is shown. \
@@ -227,7 +219,7 @@ for (i.ps in names(alpha.plot.ls)){
 To access differences in overall microbial composition between groups we used PERMANOVA type test as implemented in the *vegan* package on a dissimilarity matrix.
 \
 \
-Dissimilarity matrices were build using `r paste0("**", beta.vars.ls$Distances, "**")` dissimilarity distances per samples sub-set. Then a Distance-based redundancy analysis (dbRDA) was preformed using *dbrda()* function from the *vegan* package, and the following model `r paste0("__", beta.vars.ls$full_RDA_f, "__")`. Significance and strength of grouping and interaction was assessed with PERMANOVA by terms as implemented in *anova.cca* function with `r paste0("**", beta.vars.ls$used_perm, "**")` permutations.
+Dissimilarity matrices were build using `r used.dist[-length(used.dist)]`, and `r used.dist[length(used.dist)]` dissimilarity distances per samples sub-set. Then a Distance-based redundancy analysis (dbRDA) was preformed using *dbrda()* function from the *vegan* package, and the following model `r as.character(rda.form)[3]`. Significance and strength of grouping and interaction was assessed with PERMANOVA by terms as implemented in *anova.cca* function with `r nperm` permutations.
 \
 \
 Plots below shows visualization constrained (dbRDA) and unconstrained (PCoA) ordinations. \
@@ -311,9 +303,9 @@ To have a better understanding of the differences in microbial composition betwe
 \
 \
 Three different PREMANOVA approaches were used: \
-1. anova.cca on dbRDA with conditioned covariets: `r paste0("__", beta.vars.ls$strata_RDA_f, "__")` \
-2. adonis2 without covariets: `r paste0("__", beta.vars.ls$strata_adonis_f, "__")` \
-3. adonis2 with convariets: `r paste0("__", beta.vars.ls$strata_adonis_f_cov, "__")` \
+1. anova.cca on dbRDA with conditioned covariets: `r pair.forms[1]` \
+2. adonis2 without covariets: `r pair.forms[2]` \
+3. adonis2 with convariets: `r pair.forms[3]` \
 \
 Below are PCoA plots and summary table of PERMANOVA results.
 \
@@ -352,14 +344,14 @@ for (i.lvl in names(pcoa.pair.plots.arr)){
 
 ---
 
-Differential abundance analysis was performed using "*LinDA*", and "*Maaslin2*"methods. Prior testing taxa with prevalence less than `r paste0("__", da.vars.ls$min_prev, "__")` were removed. Taxa were considered significant if q-value was below or equal `r paste0("__", qvalue.cutoff, "__")`.
+Differential abundance analysis was performed using "*LinDA*", and "*Maaslin2*"methods. Prior testing taxa with prevalence less than `r prev.da.cut.off` were removed. Taxa were considered significant if q-value was below or equal `r qvalue.cutoff`.
 \
 \
 *Methods*
 \
 **LinDA**:
 \
-It is one of the recently developed methods that uses linear mixed effect models to account for the repeated measures and co-variets (`r paste0("__", da.vars.ls$adjst_var, "__")`). The methods is implemented as a part of *MicrobiomeStat* package and included in several functions.
+It is one of the recently developed methods that uses linear mixed effect models to account for the repeated measures and co-variets (`r adj.vars.ld`). The methods is implemented as a part of *MicrobiomeStat* package and included in several functions.
 \
 In short LinDA method uses linear regressions on Center log-ratio transformed data; identify a bias therm due to the compositional effect and corrects for it using mode of the regression coefficients across different taxa; afterwards it computes p-value. Note, in the paper stated that p-values are adjusted for multiple testing during the process, however, functions give you an option to further apply FDR adjustment, it is not clear if it is necessary to do.
 \
@@ -371,7 +363,7 @@ Assumptions of the method:
 \
 \
 Application of the method. \
-The method was applied to find differences in taxa abundance *trends* between groups (Sugar vs S&SEs) with the function *generate_taxa_trend_test_long()*.
+The method was applied to find differences in taxa abundance *trends* between groups (Sugar vs S&SEs) with the function *generate_taxa_trend_test_long()*. 
 \
 
 Following heat maps show differential abundant taxa detected by different methods, on different taxonomic level.
@@ -406,7 +398,7 @@ for (i.lvl in names(heat.sum.ls)){
   subchunkify(plot(heat.sum.ls[[i.lvl]]$plot),
                     fig_height = (heat.sum.ls[[i.lvl]]$nrow*0.2 + 3),
                     fig_width = (heat.sum.ls[[i.lvl]]$ncol*0.5 + 5))
-
+  
   cat("\n\n\n\n\n")
 
 
@@ -476,125 +468,4 @@ for (i.lvl in names(heat.sum.ls)){
   }
   cat("\n\n\n\n\n")
 }
-```
-
-
-# Responders
-
-## Overview {.tabset}
-
-```{r, echo=FALSE, results='asis'}
-
-cat("### Variables over time\n\n")
-
-subchunkify(plot(resp.vis.gen$Overview),
-                        fig_height = 12,
-                        fig_width = 15)
-
-cat("\n\n")
-
-
-cat("### Scores Distribution\n\n")
-
-subchunkify(plot(resp.vis.gen$Resp_dist),
-                        fig_height = 5,
-                        fig_width = 7)
-
-cat("\n\n")
-
-cat("### Responders N {.tabset}\n\n")
-  
-print(plot_kable(resp.vis.gen$Resp_count, 
-                   title = "N per category"))
-
-cat("\n\n")
-
-
-cat("### Response Tables {.tabset}\n\n")
-  
-for (i in names(resp.vis.gen$Resp_table)) {
-  
-  cat("####", i, "\n\n")
-  
-  print(plot_kable(resp.vis.gen$Resp_table[[i]], 
-                   title = i))
-  
-  cat("\n\n")
-  
-}
-
-cat("\n\n")
-
-cat("### Missing Tables {.tabset}\n\n")
-  
-for (i in names(resp.vis.gen$Missing_table)) {
-  
-  cat("####", i, "\n\n")
-  
-  print(plot_kable(resp.vis.gen$Missing_table[[i]], 
-                   title = i))
-  
-  cat("\n\n")
-  
-}
-
-cat("\n\n### K-mean {.tabset}\n\n")
-  
-for (i in names(resp.vis.gen$`K-mean`)) {
-  
-  cat("\n\n####", i, " {.tabset}\n\n")
-  
-  for(i2 in names(resp.vis.gen$`K-mean`[[i]])) {
-    
-    cat("\n\n#####", i2, " {.tabset}\n\n")
-    
-    subchunkify(plot(resp.vis.gen$`K-mean`[[i]][[i2]][["Clust_plot"]]),
-                        fig_height = 5,
-                        fig_width = 7)
-    
-  }
-
-}
-
-```
-
-
-## DA LinDA Trend {.tabset}
-
-```{r, echo=FALSE, results='asis'}
-
-prm.tab <- resp.da.res$Param_table
-
-prm.col <- apply(prm.tab, 1, function(x) paste(x, collapse = "-"))
-
-for(i.l1 in unique(prm.tab[["Samp_Set"]])) {
-for(i.l2 in unique(prm.tab[["Taxa_lvl"]])) {
-  
-  cat("\n\n### Samples Set: ", paste0(i.l1, "-", i.l2), " {.tabset}\n\n")
-  
-  for(i.l3 in unique(prm.tab[["Test_Var"]])) {
-    
-  cat("\n\n#### Variable: ", i.l3, " {.tabset}\n\n")
-    
-    for(i.l4 in unique(prm.tab[["Sub_Group"]])) {
-  
-    cat("\n\n##### Sub-group: ", i.l4, "\n\n")
-      
-    prm.inst <- paste(c(i.l1, i.l2, i.l4, i.l3), collapse = "-")
-      
-    ind.inst <- which(prm.col == prm.inst)
-    
-    tab.inst <- resp.da.res$LinDA_ls[[ind.inst]][["Results"]] %>% 
-                  filter(P.Value <= 0.05) %>% 
-                  arrange(P.Value)
-    
-    title.inst <- resp.da.res$LinDA_ls[[ind.inst]][["Parameters"]] %>% 
-                 paste(., collapse = "**->**") %>% 
-                 paste0("Parametrs: **", ., "**")
-    
-    print(plot_kable(tab.inst, 
-                     title = title.inst))
-
-}}}}
-  
 ```

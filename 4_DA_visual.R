@@ -19,7 +19,7 @@ rm(list = c("i", "libs.list"))
 
 load("out/supp/data_bundel.Rdata")
 load("out/supp/da_res3.1_long.Rdata")
-load("out/supp/da_res3.3_per_tp.Rdata")
+load("out/supp/da_res3.2_per_tp.Rdata")
 
 
 
@@ -31,7 +31,7 @@ methods.names <- c("Maas_TP" = "MaAsLin2 per time point",
 # Combine data for plotting 
 #-------------------------------------------------------------------------------
 df.linda.f <- bind_rows(da.long.df$LinDA, 
-                           da.per.tp.df$LinDA) %>% 
+                        da.per.tp.df$LinDA) %>% 
                         rename(p_value = P.Value, 
                                q_value = Adjusted.P.Value, 
                                Taxa = Variable) %>%
@@ -242,7 +242,7 @@ for(i.lvl in unique(df.heat.sig.all$Tax_level)) {
       # Spaghetti plots
       #-------------------------------------------------------------------------
       spag.df <- bind_cols(otu.tabs.f, 
-                           meta.ls[["all"]][c(var.use)]) %>% 
+                           meta.ls[["all"]]) %>% 
                 pivot_longer(cols = all_of(unique(sig.tax$Taxa)), 
                              names_to = "Taxa", 
                              values_to = abund.name) %>% 
@@ -251,7 +251,9 @@ for(i.lvl in unique(df.heat.sig.all$Tax_level)) {
       
       # Mean and median data frame for spaghetti plots
       spag.df.s <- spag.df %>% 
-                    group_by(across(c("Taxa", var.use[c("Time", "Group")]))) %>% 
+                    group_by(across(c("Taxa", 
+                                      da.vars.ls$time_var, 
+                                      da.vars.ls$group_var))) %>% 
                     summarise(Median = median(.data[[abund.name]], 
                                               na.rm = TRUE), 
                               Mean = mean(.data[[abund.name]], 
@@ -268,7 +270,7 @@ for(i.lvl in unique(df.heat.sig.all$Tax_level)) {
 
         facet_wrap("Taxa", scales = "free", ncol = 4) + 
         theme_bw() + 
-        scale_x_continuous(breaks = unique(spag.df[[var.use["Time"]]])) + 
+        scale_x_continuous(breaks = unique(spag.df[[da.vars.ls$time_var]])) + 
         scale_fill_manual(values = aest.ls$color_gr) + 
         scale_color_manual(values = aest.ls$color_country)  + 
         guides(
@@ -283,49 +285,44 @@ for(i.lvl in unique(df.heat.sig.all$Tax_level)) {
   
         spag.p <- base.p + 
                     geom_smooth(data = spag.df, 
-                                aes(x = .data[[var.use["Time"]]], 
+                                aes(x = .data[[da.vars.ls$time_var]], 
                                     y = .data[[abund.name]], 
-                                    group = .data[[var.use["Group"]]], 
-                                    fill = .data[[var.use["Group"]]]), 
+                                    group = .data[[da.vars.ls$group_var]], 
+                                    fill = .data[[da.vars.ls$group_var]]), 
                                 color = "gray40",
                                 linewidth = 1, method = "lm") +
-                    geom_line(data = spag.df.s, 
-                              aes(x = .data[[var.use["Time"]]], 
-                                  y = Median, 
-                                  linetype = .data[["Groups(Median)"]], 
-                                  group = .data[["Groups(Median)"]]), 
-                              linewidth = 0.75) + 
                     geom_point(data = spag.df.s, 
-                               aes(x = .data[[var.use["Time"]]], 
+                               aes(x = .data[[da.vars.ls$time_var]], 
                                    y = Mean, 
                                    shape = .data[["Groups(Mean)"]]), 
                                size = 1.5) + 
                     geom_line(data = spag.df.s, 
-                              aes(x = .data[[var.use["Time"]]], 
+                              aes(x = .data[[da.vars.ls$time_var]], 
                                   y = Mean, 
-                                  group = Group), 
-                              linewidth = 0.5)
+                                  group = Group, 
+                                  linetype = .data[["Groups(Mean)"]]), 
+                              linewidth = 0.75)
         
       } else { 
         
         spag.p <- base.p + 
                     geom_line(data = spag.df.s, 
-                              aes(x = .data[[var.use["Time"]]], 
+                              aes(x = .data[[da.vars.ls$time_var]], 
                                   y = Mean, 
                                   group = Group), 
                               linewidth = 0.5, 
                               color = "gray50") +
                     geom_point(data = spag.df.s, 
-                               aes(x = .data[[var.use["Time"]]], 
+                               aes(x = .data[[da.vars.ls$time_var]], 
                                    y = Mean, 
                                    shape = .data[["Groups(Mean)"]]), 
                                size = 2) + 
                     geom_line(data = spag.df.s, 
-                              aes(x = .data[[var.use["Time"]]], 
+                              aes(x = .data[[da.vars.ls$time_var]], 
                                   y = Mean, 
-                                  group = .data[[var.use["Time"]]]), 
-                              linewidth = 0.5)
-                    
+                                  group = .data[[da.vars.ls$group_var]], 
+                                  linetype = .data[["Groups(Mean)"]]), 
+                              linewidth = 0.75)
       }
       
       
@@ -351,7 +348,7 @@ for(i.lvl in unique(df.heat.sig.all$Tax_level)) {
       meta.heat <- meta.ls[["all"]]
       
       # Heat map 
-      top.anot <- HeatmapAnnotation(Group = meta.heat[[var.use["Group"]]], 
+      top.anot <- HeatmapAnnotation(Group = meta.heat[[da.vars.ls$group_var]], 
                                     col = list(Group = aest.ls$color_gr))
       
       heat.p1 <- Heatmap(otu.tabs.f.heat, 
@@ -382,7 +379,7 @@ for(i.lvl in unique(df.heat.sig.all$Tax_level)) {
     
       otu.heat <- otu.tabs.f.heat[, rownames(meta.heat)]
 
-      top.anot <- HeatmapAnnotation(Group = meta.heat[[var.use["Group"]]], 
+      top.anot <- HeatmapAnnotation(Group = meta.heat[[da.vars.ls$group_var]], 
                                     col = list(Group = aest.ls$color_gr))
       
       heat.p2 <- Heatmap(otu.heat, 
@@ -390,7 +387,7 @@ for(i.lvl in unique(df.heat.sig.all$Tax_level)) {
                         cluster_column_slices = FALSE,
                         cluster_columns = FALSE, 
                         column_split = meta.heat[["CIDGroup"]], 
-                        column_labels = meta.heat[[var.use["Subject"]]],
+                        column_labels = meta.heat[[da.vars.ls$subj_var]],
                         show_column_names = FALSE, 
                         top_annotation = top.anot, 
                         border = TRUE)

@@ -14,70 +14,64 @@ rm(list = c("i", "libs.list"))
 load("out/supp/data_bundel.Rdata")
 
 
-#-------------------------------------------------------------------------------
-# Variables
-#-------------------------------------------------------------------------------
-taxa.lvls <- c("Genus", "Family")
-
-adj.vars.ld <- var.use["Country"]
-
-
 ################################################################################
 # MicrobiomeStats
 
+#-------------------------------------------------------------------------------
+# Variables grid for loops 
+#-------------------------------------------------------------------------------
+var.grid <- expand.grid(da.vars.ls$data_set, 
+                        da.vars.ls$used_ps) %>% 
+                  mutate(across(everything(), as.character))
+
+
+#-------------------------------------------------------------------------------
+# Linda: Trend Analysis 
+#-------------------------------------------------------------------------------
 da.long <- list()
 
 linda.df <- NULL  
 
-for(i.ps in names(pss.ls)) {
+for(i.grid in 1:nrow(var.grid)) {
   
-  for(i.lvl in taxa.lvls) {
-    
-    ps.inst <- pss.ls[[i.ps]][[i.lvl]]
-    
-    #---------------------------------------------------------------------------
-    # Linda: Trend Analysis 
-    #---------------------------------------------------------------------------
-    mstat <- mStat_convert_phyloseq_to_data_obj(ps.inst)
-    
-    # Change to class 
-    mstat$meta.dat <- mstat$meta.dat %>% 
-              mutate(!!var.use["Time"] := as.numeric(.data[[var.use["Time"]]]), 
-                      across(var.use[c("Country", "Subject")], 
-                             as.factor), 
-                     !!var.use["Group"] := factor(.data[[var.use["Group"]]], 
-                                                  levels = c("Sugar", "S&SEs")))
-    
-    linda.trend.res <- generate_taxa_trend_test_long(
-                                  data.obj = mstat,
-                                  subject.var = var.use["Subject"],
-                                  time.var = var.use["Time"],
-                                  group.var = var.use["Group"],
-                                  adj.vars = adj.vars.ld,
-                                  prev.filter = prev.da.cut.off,
-                                  feature.mt.method = "fdr",
-                                  feature.level = "original",
-                                  feature.dat.type = "count")
-    
-    da.long[["LinDA_trand"]][[i.ps]][[i.lvl]] <- linda.trend.res$original[[1]]
-    
-    linda.df <- linda.trend.res$original[[1]] %>% 
-                          mutate(Tax_level = i.lvl, 
-                                 Subset = i.ps, 
-                                 Refference = "Sug",
-                                 Method ="LD_tr", 
-                                 Prevalence_CutOff = prev.da.cut.off) %>% 
-                          bind_rows(linda.df, .)
- 
-}}
-
+  i.set <- var.grid[i.grid, 1]
+  i.lvl <- var.grid[i.grid, 2]
+  
+  # Convert to mstat object
+  mstat <- mStat_convert_phyloseq_to_data_obj(pss.ls[[i.set]][[i.lvl]])
+  
+  # Change to class 
+  mstat$meta.dat <- meta.ls[[i.set]]
+  
+  linda.trend.res <- generate_taxa_trend_test_long(
+                            data.obj = mstat,
+                            subject.var = da.vars.ls$subj_var,
+                            time.var = da.vars.ls$time_var,
+                            group.var = da.vars.ls$group_var,
+                            adj.vars = da.vars.ls$adjst_var,
+                            prev.filter = da.vars.ls$min_prev,
+                            feature.mt.method = "fdr",
+                            feature.level = "original",
+                            feature.dat.type = "count")
+  
+  da.long[["LinDA_trand"]][[i.set]][[i.lvl]] <- linda.trend.res$original[[1]]
+  
+  linda.df <- linda.trend.res$original[[1]] %>% 
+                      mutate(Tax_level = i.lvl, 
+                             Subset = i.set, 
+                             Refference = "Sug",
+                             Method ="LD_tr", 
+                             Prevalence_CutOff = da.vars.ls$min_prev) %>% 
+                      bind_rows(linda.df, .)
+  
+}
 
 da.long.df <- list(LinDA = linda.df) 
 
 #-------------------------------------------------------------------------------
 # Write results 
 #-------------------------------------------------------------------------------
-save(list = c("prev.da.cut.off", "da.long.df", "da.long", "adj.vars.ld"), 
+save(list = c("da.long.df", "da.long"), 
      file = "out/supp/da_res3.1_long.Rdata")
 
 
