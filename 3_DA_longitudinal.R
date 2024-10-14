@@ -244,16 +244,12 @@ for(i in 1:nrow(GridDaPlot)) {
                         as.matrix() %>% 
                         as.data.frame()
     
-    col_fun = colorRamp2(c(min(HeatDf),  max(HeatDf)), 
-                         c("black", "gold"))
-    
     # Heat map plot size
     HeatHight <- nrow(HeatDf)/8
     
     HeatWidth <- HeatHight * 1.5
     
     HeatPlot <- Heatmap(HeatDf, 
-                     #   col = col_fun,
                         name = paste0("Abundance (", iCountNorm, ")"), 
                         width = unit(HeatWidth, "in"), 
                         height = unit(HeatHight, "in"), 
@@ -318,8 +314,6 @@ for(i in 1:nrow(GridDaPlot)) {
 }
 
 
-
-
 #-------------------------------------------------------------------------------
 # Write results 
 #-------------------------------------------------------------------------------
@@ -327,7 +321,8 @@ DaRes_03 <- list("da_res_ls" = DaRes,
                  "da_res_df" = DaResDf, 
                  "da_sig_tax" = SigTaxaLs)
 
-save(list = c("DaRes_03"), file = paste0(PRM$data$out_dir, "/3_DA.Rdata"))
+save(list = c("DaRes_03"), 
+     file = paste0(PRM$data$out_dir, "/3_DA.Rdata"))
 
 # rm(list = ls())
 # gc()

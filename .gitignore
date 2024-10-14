@@ -1,0 +1,16 @@
+.RDataTmp
+.Rproj.user/
+.Rhistory
+.Rdata
+.git/
+*.html
+*.png
+data/
+out/
+manuscript/
+figure/
+*--tests*
+*.Rdata
+
+
+
