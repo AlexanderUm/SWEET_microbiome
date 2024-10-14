@@ -1,144 +1,181 @@
 #-------------------------------------------------------------------------------
 # Load libraries and set the environment 
 #-------------------------------------------------------------------------------
-set.seed(349574)
+load("PRM.Rdata")
+
+load(paste0(PRM$data$out_dir, "/0_data.Rdata"))
+
+set.seed(PRM$general$seed)
 
 # Load libraries 
-libs.list <- c("phyloseq", "tidyverse", "picante", "MicrobiomeStat")
+for (i in PRM$general$libs) {library(i, character.only = TRUE)}
 
-for (i in libs.list) {library(i, character.only = TRUE)}
+# Create directory 
+DirOut <- PRM$alpha$out_dir
 
-rm(list = c("i", "libs.list"))
-
-load("out/supp/data_bundel.Rdata")
-
+dir.create(paste0(DirOut, "/plots"), recursive = TRUE, showWarnings = FALSE)
+dir.create(paste0(DirOut, "/tabs"), recursive = TRUE, showWarnings = FALSE)
 
 
 #-------------------------------------------------------------------------------
 # Alpha diversity
 #-------------------------------------------------------------------------------
-var.grid <- expand.grid(alpha.vars.ls$data_set, 
-                        alpha.vars.ls$used_ps) %>% 
-              mutate(across(everything(), as.character))
+AlphaRes <- list()
+
+GridAlpha <- expand.grid("samples_set" = PRM$alpha$data_set,
+                         "taxa_lvl" = PRM$alpha$taxa_lvl, 
+                         "count_norm" = PRM$alpha$count_norm, 
+                         stringsAsFactors = FALSE) 
 
 
-alpha.res.ls <- list()
-
-alpha.plot.ls <- list()
-
-
-for(i.grid in 1:nrow(var.grid)) {
+for(i in 1:nrow(GridAlpha)) {
   
-  i.gr <- var.grid[i.grid, 1]
-  i.lvl <- var.grid[i.grid, 2]
+  iSampleSet <- GridAlpha[i, "samples_set"]
+  
+  iTaxaLvl <- GridAlpha[i, "taxa_lvl"]
+  
+  iCountNorm <- GridAlpha[i, "count_norm"]
   
   # Extract data
-  ps.inst <- pss.ls[[i.gr]][[i.lvl]] 
+  Ps <- DataComb[[iSampleSet]]$ps[[iTaxaLvl]][[iCountNorm]]
+  
+  if(!taxa_are_rows(Ps)) {
     
-  otu.inst <- ps.inst %>% 
-                  otu_table()
-
+    Ps <- phyloseq::t(Ps)
+    
+  }
+    
+  OtuTab <- Ps %>% 
+              otu_table() %>% 
+              as.matrix()
+  
+  
+  #-----------------------------------------------------------------------------
+  # Test differences
+  #-----------------------------------------------------------------------------
   # Calculate alpha diversity with mStat
-  alpha.obj <- mStat_calculate_alpha_diversity(otu.inst, 
-                                                 alpha.vars.ls$alpha_ind) 
+  AlphaObj <- mStat_calculate_alpha_diversity(OtuTab, 
+                                               PRM$alpha$alpha_ind) 
     
   # Mstat object
-  mstat.obj <- mStat_convert_phyloseq_to_data_obj(ps.inst)
+  MstatObj <- mStat_convert_phyloseq_to_data_obj(Ps)
     
   # Change to class 
-  mstat.obj$meta.dat <- mstat.obj$meta.dat %>% 
-              mutate(!!alpha.vars.ls$time_var := 
-                       as.numeric(.data[[alpha.vars.ls$time_var]]), 
-                     across(c(alpha.vars.ls$subject_var, 
-                              alpha.vars.ls$group_var, 
-                              alpha.vars.ls$adjust_var), as.factor))
+  MstatObj$meta.dat <- DataComb[[iSampleSet]][["meta"]]
     
-    # Trends
-  alpha.mstat <- generate_alpha_trend_test_long(
-                                    data.obj = mstat.obj, 
-                                    alpha.obj = alpha.obj,
-                                    alpha.name = alpha.vars.ls$alpha_ind,
-                                    time.var = alpha.vars.ls$time_var,
-                                    subject.var = alpha.vars.ls$subject_var,
-                                    group.var = alpha.vars.ls$group_var,
-                                    adj.vars = alpha.vars.ls$adjust_var)
+  # Compare Trends
+  AlphaTestRes <- generate_alpha_trend_test_long(
+                                    data.obj = MstatObj, 
+                                    alpha.obj = AlphaObj,
+                                    alpha.name = PRM$alpha$alpha_ind,
+                                    time.var = PRM$alpha$time_var,
+                                    subject.var = PRM$alpha$subject_var,
+                                    group.var = PRM$alpha$group_var,
+                                    adj.vars = PRM$alpha$adjust_var)
     
-  alpha.res.ls[[i.gr]][[i.lvl]] <- alpha.mstat
-    
-  # Plot alpha 
-  alpha.df <- as.data.frame(alpha.obj) %>% 
-                      bind_cols(., mstat.obj$meta.dat) %>% 
-                      pivot_longer(cols = alpha.vars.ls$alpha_ind, 
+  
+  #-----------------------------------------------------------------------------
+  # Plot Alpha diversity 
+  #-----------------------------------------------------------------------------
+  TimePoints <- MstatObj$meta.dat[[PRM$alpha$time_var]] %>% 
+                  unique() %>% 
+                  sort()
+  
+  AlphaDf <- as.data.frame(AlphaObj) %>% 
+                      bind_cols(., MstatObj$meta.dat) %>% 
+                      pivot_longer(cols = PRM$alpha$alpha_ind, 
                                    names_to = "Index", 
                                    values_to = "Value")
-    
-  alpha.df.s <- alpha.df %>% 
-                        group_by(across(c(alpha.vars.ls$time_var, 
-                                          alpha.vars.ls$group_var, 
-                                          "Index"))) %>% 
-                        summarise(sum_val = mean(Value), 
-                                  .groups = "keep")
-    
-    
+  
+  AlphaDfMean <- AlphaDf %>% 
+                    reframe(Mean = mean(Value), 
+                              .by = c(PRM$alpha$time_var, 
+                                      PRM$alpha$group_var, 
+                                      "Index"))
+  
+
   # Add statistics to plots 
-  stat.text <- data.frame(Index=as.character(), 
-                            Text=as.character())
+  StatTab <- lapply(AlphaTestRes, 
+                     function(x){ x <- x[nrow(x), ] 
+                                 paste0(gsub("Group", "", x[[1]]),
+                                        " [Est=", round(x[["Estimate"]], 2), 
+                                        "; p = ", round(x[["P.Value"]], 3), "]")
+                                 }) %>% 
+                        unlist() %>% 
+                        as.data.frame() %>% 
+                        setNames("Text") %>% 
+                        rownames_to_column(var = "Index")
+            
     
-  for(i.ind in names(alpha.mstat)) {
-      
-      alpha.test <- alpha.mstat[[i.ind]] 
-      
-      text <- paste0("Group(gr2):Time [P=", 
-                     round(alpha.test[nrow(alpha.test), "P.Value"], 3), 
-                     "; Est=", 
-                     round(alpha.test[nrow(alpha.test), "Estimate"], 3), "]")
-      
-      stat.text <-  c("Index" = i.ind, "Text" = text) %>% 
-        bind_rows(stat.text, .)
-      
-  } 
-    
-  sig.df <- alpha.df %>% 
-                  group_by(across(c("Index"))) %>% 
-                  summarise(sum_val = max(Value), 
-                            .groups = "keep") %>% 
-                  mutate(y_text = sum_val*1.1, 
-                         y_fpoint = sum_val*1.2, 
-                         !!alpha.vars.ls$time_var := 
-                           sort(alpha.df[[alpha.vars.ls$time_var]])[1]) %>% 
-                  left_join(., stat.text, by = "Index")
+  StatTabText <- AlphaDf %>% 
+                summarise(y_text = max(Value)*1.1, 
+                          .by = "Index") %>% 
+                left_join(., StatTab, by = "Index") %>% 
+                mutate(x_text = TimePoints[1])
     
     
     
-  alpha.plot <- ggplot(alpha.df) + 
-                        geom_line(aes(x = .data[[alpha.vars.ls$time_var]], 
-                                      y = Value, 
-                                      group = .data[[alpha.vars.ls$subject_var]],
-                                      color = .data[[alpha.vars.ls$group_var]]), 
-                                  alpha = 0.25) + 
-                        geom_line(data = alpha.df.s, 
-                                  aes(x = .data[[alpha.vars.ls$time_var]], 
-                                      y = sum_val, 
-                                      group = .data[[alpha.vars.ls$group_var]],
-                                      color = .data[[alpha.vars.ls$group_var]]), 
+  AlphaPlot <- ggplot() + 
+                    geom_line(data = AlphaDf, 
+                              aes(x = .data[[PRM$alpha$time_var]], 
+                                  y = Value, 
+                                  group = .data[[PRM$alpha$subject_var]],
+                                  color = .data[[PRM$alpha$group_var]]), 
+                                  alpha = 0.15) + 
+                        geom_line(data = AlphaDfMean, 
+                                  aes(x = .data[[PRM$alpha$time_var]], 
+                                      y = Mean, 
+                                      group = .data[[PRM$alpha$group_var]],
+                                      color = .data[[PRM$alpha$group_var]]), 
                                   linewidth = 1) +
-                        geom_point(data = alpha.df.s, 
-                                   aes(x = .data[[alpha.vars.ls$time_var]], 
-                                       y = sum_val), 
+                        geom_point(data = AlphaDfMean, 
+                                   aes(x = .data[[PRM$alpha$time_var]], 
+                                       y = Mean), 
                                    size = 1) +
-                        geom_text(data = sig.df, 
+                        geom_text(data = StatTabText, 
                                   aes(label = Text,
                                       y = y_text, 
-                                      x = Time), size =2.25, hjust = 0) +
+                                      x = x_text), 
+                                  size =2.25, 
+                                  hjust = 0) +
                         facet_wrap(~Index, scales = "free_y") + 
                         theme_bw() + 
-                        scale_color_manual(values = aest.ls$color_gr) + 
-                        scale_x_continuous(breaks = c(0, 2, 6, 12)) + 
-                        xlab("Time(Month)")
-    
-  alpha.plot.ls[[i.gr]][[i.lvl]] <- alpha.plot
+                        scale_color_manual(values = PlotsAttr$color_gr) + 
+                        scale_x_continuous(breaks = TimePoints) + 
+                        xlab("Time(Month)") + 
+                        ylab("Index value") + 
+                        theme(panel.grid.major = element_blank(), 
+                              panel.grid.minor = element_blank())
+  
+  
+  #-----------------------------------------------------------------------------  
+  # Collect and write results 
+  #-----------------------------------------------------------------------------
+  AlphaRes[[iSampleSet]][[iTaxaLvl]][[iCountNorm]][["Stat"]] <- AlphaTestRes
+  
+  AlphaRes[[iSampleSet]][[iTaxaLvl]][[iCountNorm]][["Plot"]] <- AlphaPlot
+  
+  Map(cbind, AlphaTestRes, Index=names(AlphaTestRes)) %>% 
+    bind_rows() %>% 
+    write.csv(., file = paste0(DirOut, "/tabs/AlphaLinDa_", 
+                               iSampleSet, "_", iTaxaLvl, "_", 
+                               iCountNorm, ".csv"))
+  
+  ggsave(filename = paste0(DirOut, "/plots/AlphaLinDa_", 
+                           iSampleSet, "_", iTaxaLvl, "_", 
+                           iCountNorm, ".svg"), 
+         plot = AlphaPlot, 
+         width = 7, height = 4)
+  
     
 }
 
-save(list = c("alpha.res.ls", "alpha.plot.ls"), 
-     file = "out/supp/alpha_res.Rdata")
+
+#-------------------------------------------------------------------------------
+# Save and clean up 
+#-------------------------------------------------------------------------------
+save(list = c("AlphaRes"), 
+     file = paste0(PRM$data$out_dir, "/1_alpha.Rdata"))
+
+rm(list = ls())
+gc()

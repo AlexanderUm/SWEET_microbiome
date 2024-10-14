@@ -1,107 +1,47 @@
 ################################################################################
-# Variables 
+# Data preparation 
 ################################################################################
 
-#-------------------------------------------------------------------------------
-# Variables for data perparation
-#-------------------------------------------------------------------------------
-d.prep.vars.ls <- list(qiime_path = "data/qiime2/", 
-                       meta_path = "data/meta_comb_to_check_mss(24)_MP_25012024_MMS.csv", 
-                       min_reads_per_taxa = 60, 
-                       glom_lvls = c("Genus", "Family"), 
-                       filt_subs = list(CIDs_4 = c("CID_1", "CID_2", "CID_3", "CID_4"), 
-                                        CIDs_3 = c("CID_2", "CID_3", "CID_4")))
-
-#-------------------------------------------------------------------------------
-# Variables for alpha diversity
-#-------------------------------------------------------------------------------
-alpha.vars.ls <- list(alpha_ind = c("shannon", "simpson", 
-                                    "observed_species", "chao1"), 
-                      used_ps = c("rare_ASV", "rare_Genus"), 
-                      data_set = c("all", "CIDs_3", "CIDs_4"),
-                      time_var = "Time", 
-                      subject_var = "Subject", 
-                      group_var = "Group", 
-                      adjust_var = "Country")
-
-#-------------------------------------------------------------------------------
-# Variables for beta diversity
-#-------------------------------------------------------------------------------
-beta.vars.ls <- list(Distances = c(#"unifrac", "wunifrac", 
-                      "jaccard", "bray"),
-                      used_ps = c("css_ASV", "css_Genus"), 
-                      used_perm = 199,
-                      test_var = "Group", 
-                      full_RDA_f = "Time*Group + Condition(Country)",
-                      full_data_set = c("all"),
-                      strata_var = "CID",
-                      strata_var_levels = c("CID_1", "CID_2", "CID_3", "CID_4"),
-                      strata_RDA_f = "Group + Condition(Country)", 
-                      strata_adonis_f = "Group",
-                      strata_adonis_f_cov = "Country + Group",
-                      strata_data_set = "all", 
-                      p_color_var = "Group", 
-                      p_shape_var = "CID", 
-                      p_group_var = "Subject")
-
-#-------------------------------------------------------------------------------
-# Variables for DA
-#-------------------------------------------------------------------------------
-da.vars.ls <- list(used_ps = c("Genus", "Family"), 
-                   data_set = c("all"), 
-                   pairs_data_set = c("all"),
-                   pairs_var = "CID",
-                   pairs_var_levels = c("CID_1", "CID_2", "CID_3", "CID_4"),
-                   ref_lvl = "Sugar",
-                   min_prev = 0.5,
-                   subj_var = "Subject", 
-                   time_var = "Time", 
-                   group_var = "Group", 
-                   adjst_var = c("Country"))
-
-
-
-################################################################################
-# Data preparations
-################################################################################
-
-#-------------------------------------------------------------------------------
-# Set environment 
-#-------------------------------------------------------------------------------
-set.seed(2395692)
-
-dir.create("out/supp/", 
-           recursive = TRUE, 
-           showWarnings = FALSE)
+# Load parameters list 
+load("PRM.Rdata")
 
 # Load libraries 
-libs.list <- c("phyloseq", "tidyverse", "metagenomeSeq", "qiime2R")
+for (i in PRM$general$libs) {library(i, character.only = TRUE, )}
+rm(list = c("i"))
 
-for (i in libs.list) {library(i, character.only = TRUE, )}
+# Set seed 
+set.seed(PRM$general$seed)
 
-rm(list = c("i", "libs.list"))
-
+# Custom functions 
 source("R/phy_shorten_tax_names.R")
+source("R/phy_norm_count.R")
 
+# Output directory 
+DirOut <- PRM$data$out_dir
+
+dir.create(DirOut, recursive = TRUE, showWarnings = FALSE)
+
+# List for objects
+DataComb <- list()
 
 #-------------------------------------------------------------------------------
 # Read data/ Create phyloseq
 #-------------------------------------------------------------------------------
-ps1 <- qza_to_phyloseq(features = paste0(d.prep.vars.ls$qiime_path, "asv_table.qza"), 
-                       tree = paste0(d.prep.vars.ls$qiime_path, "tree/rooted-tree.qza"), 
-                       taxonomy = paste0(d.prep.vars.ls$qiime_path, "taxonomy_07.qza"))
+Ps <- qza_to_phyloseq(features = paste0(PRM$data$qiime_path, "asv_table.qza"), 
+                       tree = paste0(PRM$data$qiime_path, "tree/rooted-tree.qza"), 
+                       taxonomy = paste0(PRM$data$qiime_path, "taxonomy_07.qza"))
 
 # Samples metadata
-ps1.meta <- read.csv(d.prep.vars.ls$meta_path) %>% 
-                mutate(across(everything(), \(x) trimWhiteSpace(x))) %>% 
-                mutate(rownamecol = SeqID) %>% 
-                column_to_rownames("rownamecol") %>% 
-                select(-X.1) %>% 
-                mutate(SeqID = rownames(.))
+Meta <- read.csv(PRM$data$meta_path) %>% 
+                  mutate(across(everything(), \(x) trimWhiteSpace(x))) %>% 
+                  mutate(rownamecol = SeqID) %>% 
+                  column_to_rownames("rownamecol") %>% 
+                  select(-X.1) %>% 
+                  mutate(SeqID = rownames(.))
 
 
 # Samples to keep
-ps1.meta.f <- ps1.meta %>% 
+MetaFilt <- Meta %>% 
                   filter(!is.na(SampleID)) %>% 
                   filter(!is.na(CID)) %>% 
                   filter(group %in% c(1, 2)) %>% 
@@ -127,42 +67,45 @@ ps1.meta.f <- ps1.meta %>%
                   column_to_rownames("RowNAMES")
 
 
-
 # Trim out samples 
-ps1 <-  prune_samples(rownames(ps1.meta.f), ps1) 
+Ps <-  prune_samples(rownames(MetaFilt), Ps) 
 
-ps1.meta.f <- ps1.meta.f[sample_names(ps1), ]
+MetaFilt <- MetaFilt[sample_names(Ps), ]
 
-sample_data(ps1) <- ps1.meta.f
+sample_data(Ps) <- MetaFilt
+
+DataComb[["all"]][["meta"]] <- MetaFilt
 
 
 #-------------------------------------------------------------------------------
 # Filter out taxa
 #-------------------------------------------------------------------------------
 # filter taxa with with less than X reads in total   
-ps1 <- prune_taxa(taxa_sums(ps1) >= d.prep.vars.ls$min_reads_per_taxa, ps1)
+Ps <- prune_taxa(taxa_sums(Ps) >= PRM$data$min_reads_per_taxa, Ps)
 
 # Remove ASVs: 
 # Kingdom: "d__Eukaryota", "Unassigned"
 # Genus: "Mitochondria"
-ps1 <- prune_taxa(!tax_table(ps1)[, "Genus"] %in% "Mitochondria", ps1)
+Ps <- prune_taxa(!tax_table(Ps)[, "Genus"] %in% "Mitochondria", Ps)
 
-ps1 <- prune_taxa(!tax_table(ps1)[, "Genus"] %in% "Chloroplast", ps1)
+Ps <- prune_taxa(!tax_table(Ps)[, "Genus"] %in% "Chloroplast", Ps)
 
-ps1 <- prune_taxa(!is.na(tax_table(ps1)[, "Phylum"])[, "Phylum"], ps1)
+Ps <- prune_taxa(!is.na(tax_table(Ps)[, "Phylum"])[, "Phylum"], Ps)
 
-ps1 <- prune_taxa(tax_table(ps1)[, "Kingdom"] %in% c("d__Bacteria", "d__Archaea"), 
-                  ps1)
+Ps <- prune_taxa(tax_table(Ps)[, "Kingdom"] %in% c("d__Bacteria", "d__Archaea"), 
+                  Ps)
+
+# Add phyloseq to data list 
+DataComb[["all"]][["ps"]][["ASV"]][["count"]] <- Ps
 
 
 #-------------------------------------------------------------------------------
 # Glom to higher taxonomic level
 #-------------------------------------------------------------------------------
-pss.ls <- list(all = list(ASV = ps1))
-
-for(i.lvl in d.prep.vars.ls$glom_lvls)  {
+for(i in PRM$data$glom_lvls)  {
   
-  pss.ls$all[[i.lvl]] <- tax_glom(ps1, i.lvl)
+  DataComb[["all"]][["ps"]][[i]][["count"]] <- tax_glom(Ps, i, 
+                                                        NArm = PRM$data$glom_NArm)
 
 }
 
@@ -170,84 +113,64 @@ for(i.lvl in d.prep.vars.ls$glom_lvls)  {
 #-------------------------------------------------------------------------------
 # Adjust taxa names 
 #-------------------------------------------------------------------------------
-for(i.lvl in names(pss.ls$all)) {
+for(i in names(DataComb[["all"]][["ps"]])) {
+  
+  InstNames <- DataComb[["all"]][["ps"]][[i]][["count"]] %>% 
+                  phy_shorten_tax_names(.) %>% 
+                  make.unique()
 
-  taxa_names(pss.ls$all[[i.lvl]]) <- phy_shorten_tax_names(pss.ls$all[[i.lvl]]) %>% 
-                                                make.unique()
+  taxa_names(DataComb[["all"]][["ps"]][[i]][["count"]]) <- InstNames
+  
 }
 
 
 #-------------------------------------------------------------------------------
 # Create filtered subsets
 #-------------------------------------------------------------------------------
-for(gr in names(d.prep.vars.ls$filt_subs)) {
+for(i in names(PRM$data$sample_subs)) { 
   
-  samp.id <- ps1.meta.f %>% 
-                filter(CID %in% d.prep.vars.ls$filt_subs[[gr]]) %>% 
-                group_by(Subject) %>% 
-                filter(n() == length(d.prep.vars.ls$filt_subs[[gr]])) %>% 
-                pull(SeqID)
+  InstMeta <- MetaFilt %>% 
+                filter(CID %in% PRM$data$sample_subs[[i]]) %>% 
+                filter(n() == length(PRM$data$sample_subs[[i]]), 
+                       .by = Subject) %>% 
+                droplevels()
   
-  for(i.lvl in names(pss.ls$all)) {
+  for(j in names(DataComb[["all"]][["ps"]])) { 
     
-   pss.ls[[gr]][[i.lvl]] <- prune_samples(samp.id, pss.ls$all[[i.lvl]]) 
+    DataComb[[i]][["ps"]][[j]][["count"]] <- 
+                      prune_samples(rownames(InstMeta), 
+                                    DataComb[["all"]][["ps"]][[j]][["count"]]) 
     
   }
+  
+  DataComb[[i]][["meta"]] <- 
+                InstMeta[sample_names(DataComb[[i]][["ps"]][[j]][["count"]]), ]
   
 }
 
 
 #-------------------------------------------------------------------------------
-# Add ps objects with normalized counts  
+# Normalize count   
 #-------------------------------------------------------------------------------
-for(i.set in names(pss.ls)) {
-  
-  for(i.lvl in names(pss.ls[[i.set]])) {
-    
-    ps.inst <- pss.ls[[i.set]][[i.lvl]]
-    
-    # Rarefaction 
-    ps.inst.rare <- rarefy_even_depth(ps.inst, rngseed = 30476048)
-    
-    pss.ls[[i.set]][[paste0("rare_", i.lvl)]] <- ps.inst.rare
-    
-    # CSS normalization
-    ps.inst.css <- ps.inst
-    
-    otu_table(ps.inst.css) <- ps.inst.css %>% 
-                                phyloseq_to_metagenomeSeq(.) %>% 
-                                cumNorm(., p=cumNormStatFast(.)) %>% 
-                                MRcounts(., norm=TRUE, log=TRUE) %>% 
-                                as.data.frame() %>% 
-                                otu_table(., taxa_are_rows = TRUE)
-    
-    pss.ls[[i.set]][[paste0("css_", i.lvl)]] <- ps.inst.css
-    
-  }
-}
+NormGrid <- expand.grid("Set" = names(DataComb), 
+                        "TaxLvl" = names(DataComb[[1]][["ps"]]), 
+                        "Method" = PRM$data$count_norm, 
+                        stringsAsFactors = FALSE)
 
-#-------------------------------------------------------------------------------
-# Extract Metadata per samples subset
-#-------------------------------------------------------------------------------
-meta.ls <- list()
+for(i in 1:nrow(NormGrid)) {
 
-for(i.ps in names(pss.ls)) {
+  iSet <- NormGrid[i, "Set"]
   
-  meta.ls[[i.ps]] <- pss.ls[[i.ps]][[1]] %>% 
-    sample_data() %>% 
-    as.matrix() %>% 
-    as.data.frame() %>% 
-    mutate(Time = as.numeric(trimws(Time)), 
-           Group = factor(Group, levels = c("Sugar", "S&SEs")), 
-           Plate = as.factor(Plate), 
-           CID = as.factor(CID), 
-           Country = as.factor(Country), 
-           Subject = as.factor(Subject), 
-           GroupCID = as.factor(paste0(Group, ":", gsub("CID_", "c", CID))), 
-           CIDGroup = as.factor(paste0(gsub("CID_", "c", CID), ":", Group)), 
-           Body_weight = as.numeric(Body_weight), 
-           Fasting_glucose = as.numeric(Fasting_glucose), 
-           HbA1c = as.numeric(HbA1c))
+  iTaxLvl <- NormGrid[i, "TaxLvl"]
+  
+  iMethod <- NormGrid[i, "Method"]
+  
+  DataComb[[iSet]][["ps"]][[iTaxLvl]][[iMethod]] <- 
+        DataComb[[iSet]][["ps"]][[iTaxLvl]][["count"]] %>% 
+        phy_norm_count(norm_type = iMethod, 
+                       seed = PRM$general$seed, 
+                       rare_depth = PRM$data$rare_depth)
+                            
   
 }
 
@@ -255,15 +178,19 @@ for(i.ps in names(pss.ls)) {
 #-------------------------------------------------------------------------------
 # Aesthetics for plots 
 #-------------------------------------------------------------------------------
-aest.ls <- list(color_gr = setNames(c("#377EB8", "red4"), 
-                                    unique(ps1.meta.f$Group)), 
-                shape_cid = setNames(c(15:18), 
-                                     na.omit(unique(ps1.meta.f$CID))), 
-                color_country = setNames(brewer.pal(4, "Set3"), 
-                                         unique(ps1.meta.f$Country)))
+PlotsAttr <- list(color_gr = setNames(c("#377EB8", "red4"), 
+                                    unique(MetaFilt$Group)), 
+                  shape_cid = setNames(c(15:18), 
+                                       na.omit(unique(MetaFilt$CID))), 
+                  color_country = setNames(brewer.pal(4, "Set3"), 
+                                           unique(MetaFilt$Country)))
 
 
+#-------------------------------------------------------------------------------
+# Write objects and clean environment 
+#-------------------------------------------------------------------------------
+save(list = c("DataComb", "PlotsAttr"), 
+     file = paste0(DirOut, "/0_data.Rdata"))
 
-save(list = c("pss.ls", "meta.ls", "aest.ls", "d.prep.vars.ls", 
-              "alpha.vars.ls", "beta.vars.ls", "da.vars.ls"), 
-     file = "out/supp/data_bundel.Rdata")
+rm(list = ls())
+gc()
