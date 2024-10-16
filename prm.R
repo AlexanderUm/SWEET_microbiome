@@ -12,7 +12,7 @@ PRM[["general"]] <- list("cols" = list("GroupFac"= "Group",
                                     "MicrobiomeStat", "ggvegan", "ggpmisc", 
                                     "Maaslin2", "ComplexHeatmap", 
                                     "rfPermute", "caret", "randomForest", 
-                                    "pROC", "cowplot"), 
+                                    "pROC", "cowplot", "ggvenn"), 
                          "seed" = 394573)
 
 
