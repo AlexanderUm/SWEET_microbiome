@@ -102,7 +102,12 @@ for(i in 1:nrow(GridDa)) {
 #-------------------------------------------------------------------------------
 # Plot results 
 #-------------------------------------------------------------------------------
-PubSigTax <- read.csv(file = "data/sig_taxa_pub.csv")$x
+PubSigTaxLs <- list()
+
+PubSigTaxLs[["Genus"]] <- read.csv(file = "data/sig_taxa_pub.csv")$x
+
+PubSigTaxLs[["Family"]] <- read.csv(file = "data/sig_taxa_pub_supp.csv")$Variable
+
 
 GridDaPlot <- expand.grid("taxa_lvl" = PRM$DA$taxa_lvl, 
                           "count_norm_plot" = PRM$DA$count_norm_plot, 
@@ -279,7 +284,9 @@ for(i in 1:nrow(GridDaPlot)) {
   #-----------------------------------------------------------------------------
   # Sig taxa used in publication (SCFA & Methane producers)
   #-----------------------------------------------------------------------------
-  if(iTaxaLvl == "Genus") {
+  if(iTaxaLvl %in% c("Genus", "Family")) {
+    
+    PubSigTax <- PubSigTaxLs[[iTaxaLvl]]
     
     PresentTax <- intersect(PubSigTax, names(IndPlotsLs))
     
@@ -324,7 +331,7 @@ DaRes_03 <- list("da_res_ls" = DaRes,
 save(list = c("DaRes_03"), 
      file = paste0(PRM$data$out_dir, "/3_DA.Rdata"))
 
-# rm(list = ls())
-# gc()
+rm(list = ls())
+gc()
 
 

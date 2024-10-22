@@ -21,7 +21,7 @@ PRM[["data"]] <- list("out_dir" = "out/Rdata",
                       "qiime_path" = "data/qiime2/", 
                       "meta_path" = "data/meta_comb_to_check_mss(24)_MP_12032024_MMS.csv", 
                       "min_reads_per_taxa" = 50, 
-                      "glom_lvls" = c("Genus"), 
+                      "glom_lvls" = c("Genus", "Family"), 
                       "glom_NArm" = TRUE,
                       "rare_depth" = 40000,
                       "count_norm" = c("CSS_log2", "TSS_log2", "Rare"))
@@ -57,7 +57,7 @@ PRM[["beta"]] <- list("out_dir" = "out/beta",
 
 
 PRM[["DA"]] <- list("out_dir" = "out/DA", 
-                    "taxa_lvl" = c("Genus"), 
+                    "taxa_lvl" = c("Genus", "Family"), 
                     "data_set" = c("all"),
                     "count_norm" = c("count"),
                     "count_norm_plot" = c("CSS_log2"),
