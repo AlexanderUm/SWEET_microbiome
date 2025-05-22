@@ -8,16 +8,11 @@
 #----------------------------------------
 
 
-in_folder=/home/jovyan/work/pvc2/Monica/sweet_comb_VenIt
+in_folder=./data
 
-out_folder=/home/jovyan/work/pvc/Monica/out/q_7now23_sweet_VenIt
+out_folder=./out
 
-q_env_path=/home/jovyan/work/conda_env/qiime2
-
-picr_env_path=/home/jovyan/work/conda_env/picrust2
-
-# meta_data=PVC/PERSON/meta.txt
-#----------------------------------------
+q_env_path=./qiime2
 
 # Optional to change (parameters have defualt values)
 # General parameters 
@@ -32,7 +27,7 @@ p_max_ee_f=2
 p_max_ee_r=2
 
 # Taxanomic classification (path to classifier)
-tax_classif=/home/jovyan/work/pvc/tools/res/classif/silva-138-99-nb-weighted-classifier.qza
+tax_classif=./silva-138-99-nb-weighted-classifier.qza
 
 
 ##################################################################################
@@ -86,7 +81,6 @@ qiime metadata tabulate \
 
 # Make phylogenetic tree. 
 # ---------------------------------------------------------
-# I will use complite pipline without much of adjustment 
 mkdir -p $out_folder/tree/
 
 qiime phylogeny align-to-tree-mafft-fasttree \
@@ -109,30 +103,6 @@ qiime feature-classifier classify-sklearn \
 qiime metadata tabulate \
 --m-input-file $out_folder/taxonomy_07.qza \
 --o-visualization $out_folder/summary/taxonomy_07.qzv
-
-
-# Export data
-# -----------------------------------------------------------
-
-# export feature table (taxonomy table)
-qiime tools export \
---input-path $out_folder/taxonomy_07.qza \
---output-path $out_folder/export/feature_tab
-
-# export tree
-qiime tools export \
---input-path $out_folder/tree/rooted-tree.qza \
---output-path $out_folder/export/tree
-
-# Export asv table 
-qiime tools export \
---input-path $out_folder/asv_table.qza \
---output-path $out_folder/export/asv_table
-
-# Export asv repseq 
-qiime tools export \
---input-path $out_folder/rep_seqs.qza \
---output-path $out_folder/export/rep_seqs
 
 conda deactivate 
 
