@@ -13,7 +13,7 @@ index_wms_fun <- function(x, y){(x[y == "CID_4"] - x[y == "CID_2"])/
 
 #-------------------------------------------------------------------------------
 # Define functions to assign responders and non_responders based on index
-
+#-------------------------------------------------------------------------------
 resp_5tile_fun <- function(x){case_match(ntile(x, 5), 
                                          1 ~ "Resp", 2 ~ "Resp",
                                          3 ~ NA,

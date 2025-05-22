@@ -41,7 +41,6 @@ for(i in 1:nrow(GridDa)) {
   
   iSampleSet <- GridDa[i, "samples_set"]
   
-  
   # Extract data 
   Ps <- DataComb[[iSampleSet]][["ps"]][[iTaxaLvl]][[iCountNorm]] 
   
@@ -106,7 +105,7 @@ PubSigTaxLs <- list()
 
 PubSigTaxLs[["Genus"]] <- read.csv(file = "data/sig_taxa_pub.csv")$x
 
-PubSigTaxLs[["Family"]] <- read.csv(file = "data/sig_taxa_pub_supp.csv")$Variable
+PubSigTaxLs[["Family"]] <- read.csv(file = "data/all--count--Sig.csv")$Variable
 
 
 GridDaPlot <- expand.grid("taxa_lvl" = PRM$DA$taxa_lvl, 

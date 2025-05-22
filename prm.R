@@ -12,7 +12,7 @@ PRM[["general"]] <- list("cols" = list("GroupFac"= "Group",
                                     "MicrobiomeStat", "ggvegan", "ggpmisc", 
                                     "Maaslin2", "ComplexHeatmap", 
                                     "rfPermute", "caret", "randomForest", 
-                                    "pROC", "cowplot", "ggvenn"), 
+                                    "pROC", "cowplot", "ggvenn", "lme4"), 
                          "seed" = 394573)
 
 
@@ -20,18 +20,20 @@ PRM[["general"]] <- list("cols" = list("GroupFac"= "Group",
 PRM[["data"]] <- list("out_dir" = "out/Rdata",
                       "qiime_path" = "data/qiime2/", 
                       "meta_path" = "data/meta_comb_to_check_mss(24)_MP_12032024_MMS.csv", 
+                      "picrust_path" = "data/picrust_res/picrust/pathways_out/path_abun_unstrat.tsv", 
                       "min_reads_per_taxa" = 50, 
                       "glom_lvls" = c("Genus", "Family"), 
                       "glom_NArm" = TRUE,
                       "rare_depth" = 40000,
+                      "sample_subs" = list("no_M0" = c("CID_2", "CID_3", "CID_4")),
                       "count_norm" = c("CSS_log2", "TSS_log2", "Rare"))
 
 
 # Alpha diversity 
-PRM[["alpha"]] <- list("out_dir" = "out/alpha", 
+PRM[["alpha"]] <- list("out_dir" = "out/alpha_rev1", 
                        "alpha_ind" = c("shannon", "simpson", 
                                        "observed_species", "chao1"), 
-                       "taxa_lvl" = "ASV", 
+                       "taxa_lvl" = "ASV_alpha", 
                        "data_set" = c("all"),
                        "count_norm" = c("Rare"), 
                        "time_var" = "Time", 
@@ -56,9 +58,9 @@ PRM[["beta"]] <- list("out_dir" = "out/beta",
                       "p_group" = "Subject")
 
 
-PRM[["DA"]] <- list("out_dir" = "out/DA", 
-                    "taxa_lvl" = c("Genus", "Family"), 
-                    "data_set" = c("all"),
+PRM[["DA"]] <- list("out_dir" = "out/DA_rev1", 
+                    "taxa_lvl" = c("Genus", "Family", "pathways"), 
+                    "data_set" = c("all", "no_M0"),
                     "count_norm" = c("count"),
                     "count_norm_plot" = c("CSS_log2"),
                     "time_var" = "Time", 

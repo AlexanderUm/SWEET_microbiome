@@ -72,8 +72,34 @@ for(i in 1:nrow(GridAlpha)) {
                                     subject.var = PRM$alpha$subject_var,
                                     group.var = PRM$alpha$group_var,
                                     adj.vars = PRM$alpha$adjust_var)
-    
   
+  #=============================================================================
+  # Revision 1 
+  #-----------------------------------------------------------------------------
+  # Formula for glmm
+  FormGlmm <- paste0("observed_species~", 
+                     paste(PRM$alpha$adjust_var, collapse = "+"), "+", 
+                     PRM$alpha$group_var, "*",PRM$alpha$time_var , "+(1+", 
+                     PRM$alpha$time_var, "|", PRM$alpha$subject_var, ")")
+  
+  ObservedTab <- bind_cols(AlphaObj$observed_species, 
+                           DataComb[[iSampleSet]][["meta"]])
+  
+  GlmmRes <- glmer(as.formula(FormGlmm), data = ObservedTab, family = poisson)
+  
+  GlmmResSummary <- summary(GlmmRes)
+  
+  # Extract coefficients and format same as LinDa output 
+  GlmmTermsF <- GlmmResSummary$coefficients %>% 
+                    as.data.frame() %>% 
+                    setNames(names(AlphaTestRes$observed_species)[-1]) %>% 
+                    mutate(Term = rownames(.)) %>% 
+                    select(names(AlphaTestRes$observed_species))
+  
+  # Replace results in LinDa output
+  AlphaTestRes$observed_species <- GlmmTermsF
+  #=============================================================================
+    
   #-----------------------------------------------------------------------------
   # Plot Alpha diversity 
   #-----------------------------------------------------------------------------

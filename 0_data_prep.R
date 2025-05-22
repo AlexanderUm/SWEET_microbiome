@@ -80,6 +80,25 @@ DataComb[["all"]][["meta"]] <- MetaFilt
 #-------------------------------------------------------------------------------
 # Filter out taxa
 #-------------------------------------------------------------------------------
+#===============================================================================
+# Revision 1 - 20 May 2025
+PsAlpha <- Ps 
+
+PsAlpha <- prune_taxa(!tax_table(PsAlpha)[, "Genus"] %in% "Mitochondria", PsAlpha)
+
+PsAlpha <- prune_taxa(!tax_table(PsAlpha)[, "Genus"] %in% "Chloroplast", PsAlpha)
+
+PsAlpha <- prune_taxa(!is.na(tax_table(PsAlpha)[, "Phylum"])[, "Phylum"], PsAlpha)
+
+PsAlpha <- prune_taxa(tax_table(PsAlpha)[, "Kingdom"] %in% c("d__Bacteria", 
+                                                             "d__Archaea"), 
+                 PsAlpha)
+
+# Add phyloseq to data list 
+DataComb[["all"]][["ps"]][["ASV_alpha"]][["count"]] <- PsAlpha
+#===============================================================================
+
+
 # filter taxa with with less than X reads in total   
 Ps <- prune_taxa(taxa_sums(Ps) >= PRM$data$min_reads_per_taxa, Ps)
 
@@ -123,6 +142,29 @@ for(i in names(DataComb[["all"]][["ps"]])) {
   
 }
 
+
+#===============================================================================
+# Revision 1
+# Add PICRUSt2 predicted pathways into data set 
+# Read in data, format and filter 
+PathwayTab <- read_tsv(PRM$data$picrust_path, show_col_types = FALSE) %>% 
+                as.data.frame() %>% 
+                column_to_rownames(var = "pathway") %>% 
+                select(all_of(sample_names(Ps)))
+
+PathwayMockTax <- data.frame(Type = "Pathway", 
+                             Pathway = rownames(PathwayTab), 
+                             Rownames = rownames(PathwayTab)) %>% 
+                    column_to_rownames(var = "Rownames") %>% 
+                    as.matrix()
+
+# Trim samples 
+PsPathway <- phyloseq(otu_table = otu_table(PathwayTab, taxa_are_rows = TRUE), 
+                      sample_data = sample_data(Ps), 
+                      tax_table = tax_table(PathwayMockTax))
+
+DataComb[["all"]][["ps"]][["pathways"]][["count"]] <- PsPathway
+#===============================================================================
 
 #-------------------------------------------------------------------------------
 # Create filtered subsets
@@ -171,7 +213,6 @@ for(i in 1:nrow(NormGrid)) {
                        seed = PRM$general$seed, 
                        rare_depth = PRM$data$rare_depth)
                             
-  
 }
 
 
