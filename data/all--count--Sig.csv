@@ -1,0 +1,11 @@
+Variable,P.Value,Adjusted.P.Value,Coefficient
+F_Veillonellaceae,0.014444147,0.04606375,0.539554532
+F_Prevotellaceae,7.74E-06,7.24E-05,0.956314935
+F_Porphyromonadaceae,0.00020036,0.001375803,0.881383926
+F_Peptococcaceae,0.020494995,0.057053635,0.506996001
+F_Actinomycetaceae,0.002245555,0.009593607,0.795380617
+F_Peptostreptococcales_Tissierellales,1.51E-07,2.59E-06,1.296440205
+F_Clostridia_vadinBB60,0.01140884,0.039170351,0.679364602
+F_Saccharimonadales,0.021644942,0.058669185,-0.449590155
+F_Competibacteraceae,0.000453597,0.002748262,-0.742308213
+F_Methanosarcinaceae,4.72E-08,9.72E-07,1.714281599

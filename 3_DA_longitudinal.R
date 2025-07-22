@@ -146,6 +146,20 @@ for(i in 1:nrow(GridDaPlot)) {
     #---------------------------------------------------------------------------
     # Spaghetti plots
     #---------------------------------------------------------------------------
+    
+    if(nrow(SigTaxa) > 50) {
+      
+    SpaghTaxa <- SigTaxa %>% 
+                    arrange(Adjusted.P.Value) %>% 
+                    head(n = 50) %>% 
+                    pull(Variable)
+      
+    } else {
+      
+      SpaghTaxa <- SigTaxa$Variable
+      
+    }
+    
     TaxaLongDf <- DataComb[[iSampleSet]][["ps"]][[iTaxaLvl]][[iCountNorm]] %>% 
                       prune_taxa(SigTaxa$Variable, .) %>% 
                       otu_table() %>% 
@@ -160,7 +174,10 @@ for(i in 1:nrow(GridDaPlot)) {
                              Median = median(Taxa_Abundance),
                              .by = c(PRM$DA$group_var, "Taxa", PRM$DA$time_var))
     
-    FullGraph <- ggplot(TaxaLongDf, 
+    TaxaLongDfSpag <- TaxaLongDf %>% 
+                          filter(Taxa %in% SpaghTaxa)
+    
+    FullGraph <- ggplot(TaxaLongDfSpag, 
                    aes(x = .data[[PRM$DA$time_var]])) + 
                     geom_smooth(aes(x = .data[[PRM$DA$time_var]], 
                                     y = Taxa_Abundance, 
@@ -191,7 +208,7 @@ for(i in 1:nrow(GridDaPlot)) {
                              iSampleSet, "--", iCountNorm, ".png"), 
            plot = FullGraph, 
            width = 10, 
-           height = (ceiling(length(SigTaxa$Variable)/5)* 1.25 + 1)) 
+           height = (ceiling(length(SpaghTaxa)/5)* 1.25 + 1)) 
             
     
     IndPlotsLs <- list()
@@ -227,10 +244,11 @@ for(i in 1:nrow(GridDaPlot)) {
                               scale_linetype_discrete(name = "Group(mean)") + 
                               scale_shape_discrete(name = "Group(mean)")
       
-      ggsave(filename = paste0(iDirOut, "/", iSampleSet, "--", iCountNorm, "/", 
-                               tax, ".svg"), 
-             plot = IndPlotsLs[[tax]], 
-             width = 2.5, height = 2.25)
+      # Save every individual plot for a feature 
+      # ggsave(filename = paste0(iDirOut, "/", iSampleSet, "--", iCountNorm, "/", 
+      #                          tax, ".svg"), 
+      #        plot = IndPlotsLs[[tax]], 
+      #        width = 2.5, height = 2.25)
 
     }
     
@@ -243,7 +261,7 @@ for(i in 1:nrow(GridDaPlot)) {
     ht_opt$TITLE_PADDING = unit(c(4, 4), "points")
     
     HeatDf <- DataComb[[iSampleSet]][["ps"]][[iTaxaLvl]][[iCountNorm]] %>% 
-                        prune_taxa(SigTaxa$Variable, .) %>% 
+                        prune_taxa(SpaghTaxa, .) %>% 
                         otu_table() %>% 
                         as.matrix() %>% 
                         as.data.frame()
@@ -277,6 +295,32 @@ for(i in 1:nrow(GridDaPlot)) {
         height = HeatHight + 1, units = "in", res = 300)
     draw(HeatPlot, heatmap_legend_side="bottom")
     dev.off()
+    
+    #---------------------------------------------------------------------------
+    # Legend for publication 
+    #---------------------------------------------------------------------------
+    DaResDf %>% 
+      filter(taxa_lvl == iTaxaLvl, 
+             samples_set == iSampleSet,
+             Variable %in% SpaghTaxa) %>% 
+      mutate(Order = match(Variable, SpaghTaxa), 
+             Qval = round(Adjusted.P.Value, 4), 
+             Variable = gsub("G_|F_", "", Variable)) %>% 
+      arrange(Order) %>% 
+      mutate(Variable = gsub("_", " ", Variable)) %>% 
+      mutate(Qval = ifelse(Qval == 0, "P<0.0001", sprintf("P=%.4f", Qval))) %>% 
+      mutate(Coef_Form = paste0(Variable, 
+                                " [",
+                                sprintf("β=%.2f; ", Coefficient), 
+                                sprintf("SE=%.2f; ", round(SE, 2)), 
+                                Qval, "]")) %>% 
+      
+      pull(Coef_Form) %>% 
+      paste(collapse = ", ") %>% 
+      writeLines( paste0(iDirOut, "/", 
+                         iSampleSet, "--", iCountNorm, "--heat_spag_legend.txt"))
+    
+    
   }
   
   
@@ -292,7 +336,7 @@ for(i in 1:nrow(GridDaPlot)) {
     if(length(PresentTax) > 0) {
       
       PlotsList <- lapply(IndPlotsLs[PresentTax], 
-                          function(x){ x + theme(legend.position = "none")}) 
+                          function(x){x + theme(legend.position = "none")}) 
       
       RotLegend <- IndPlotsLs[[1]] + 
                       theme(legend.position = "right")
@@ -308,10 +352,37 @@ for(i in 1:nrow(GridDaPlot)) {
       
       
       save_plot(filename = paste0(iDirOut, "/", 
-                               iSampleSet, "--", iCountNorm, "--SCFA.png"), 
+                               iSampleSet, "--", iCountNorm, "--SCFA.tiff"), 
+                compression = "lzw",
              plot = FullGrid, 
+             dpi = 300,
              base_width = 7.5, 
              base_height = (ceiling(length(PresentTax)/3)* 1.5 + 1)) 
+      
+      #-------------------------------------------------------------------------
+      # Add statistical information to taxa for publication 
+      #-------------------------------------------------------------------------
+      DaResDf %>% 
+        filter(taxa_lvl == iTaxaLvl, 
+               samples_set == iSampleSet,
+               Variable %in% PubSigTax) %>% 
+        mutate(Order = match(Variable, PubSigTax), 
+               Qval = round(Adjusted.P.Value, 4), 
+               Variable = gsub("G_|F_", "", Variable)) %>% 
+        arrange(Order) %>% 
+        mutate(Variable = gsub("_", " ", Variable), 
+               Lettes = paste0("(", LETTERS[1:nrow(.)], ")")) %>% 
+        mutate(Qval = ifelse(Qval == 0, "P<0.0001", sprintf("P=%.4f", Qval))) %>% 
+        mutate(Coef_Form = paste0(Lettes, " ", Variable, 
+                                  "[",
+                                  sprintf("β=%.2f; ", Coefficient), 
+                                  sprintf("SE=%.2f; ", round(SE, 2)), 
+                                  Qval, "]")) %>% 
+
+        pull(Coef_Form) %>% 
+        paste(collapse = ", ") %>% 
+        writeLines( paste0(iDirOut, "/", 
+                           iSampleSet, "--", iCountNorm, "--SCFA_legend.txt"))
       
     }
 

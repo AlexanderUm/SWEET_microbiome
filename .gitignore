@@ -5,11 +5,11 @@
 .git/
 *.html
 *.png
-data/
-out/
+data/*__tests*
+out*/
 manuscript/
 figure/
-*--tests*
+*__tests*
 *.Rdata
 
 

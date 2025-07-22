@@ -187,6 +187,7 @@ RocDataDf <- RocDataDf %>%
                 mutate(resp_vars = gsub("_", " ", resp_vars), 
                        x_grid_var = paste0(group_lvls, " [", samples_set, "]"))
 
+
 RocPlot <- ggplot(RocDataDf, aes(x = sensitivities, 
                                  y = specificities)) + 
                 geom_line(aes(group = Random, 

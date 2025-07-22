@@ -6,7 +6,7 @@
 load("PRM.Rdata")
 
 # Load libraries 
-for (i in PRM$general$libs) {library(i, character.only = TRUE, )}
+for (i in PRM$general$libs) {library(i, character.only = TRUE)}
 rm(list = c("i"))
 
 # Set seed 
@@ -28,26 +28,20 @@ DataComb <- list()
 # Read data/ Create phyloseq
 #-------------------------------------------------------------------------------
 Ps <- qza_to_phyloseq(features = paste0(PRM$data$qiime_path, "asv_table.qza"), 
-                       tree = paste0(PRM$data$qiime_path, "tree/rooted-tree.qza"), 
+                       tree = paste0(PRM$data$qiime_path, "rooted-tree.qza"), 
                        taxonomy = paste0(PRM$data$qiime_path, "taxonomy_07.qza"))
 
 # Samples metadata
 Meta <- read.csv(PRM$data$meta_path) %>% 
                   mutate(across(everything(), \(x) trimWhiteSpace(x))) %>% 
                   mutate(rownamecol = SeqID) %>% 
-                  column_to_rownames("rownamecol") %>% 
-                  select(-X.1) %>% 
-                  mutate(SeqID = rownames(.))
-
+                  column_to_rownames("rownamecol") 
 
 # Samples to keep
 MetaFilt <- Meta %>% 
-                  filter(!is.na(SampleID)) %>% 
                   filter(!is.na(CID)) %>% 
                   filter(group %in% c(1, 2)) %>% 
                   group_by(across("UniqPartID")) %>% 
-                  filter(Nreads == max(Nreads)) %>% 
-                  ungroup() %>% 
                   mutate(Time = as.numeric(case_match(CID, 
                                                       "CID_1" ~ 0, 
                                                       "CID_2" ~ 2, 
@@ -96,7 +90,7 @@ PsAlpha <- prune_taxa(tax_table(PsAlpha)[, "Kingdom"] %in% c("d__Bacteria",
 
 # Add phyloseq to data list 
 DataComb[["all"]][["ps"]][["ASV_alpha"]][["count"]] <- PsAlpha
-#===============================================================================
+#-------------------------------------------------------------------------------
 
 
 # filter taxa with with less than X reads in total   
@@ -145,26 +139,31 @@ for(i in names(DataComb[["all"]][["ps"]])) {
 
 #===============================================================================
 # Revision 1
-# Add PICRUSt2 predicted pathways into data set 
-# Read in data, format and filter 
-PathwayTab <- read_tsv(PRM$data$picrust_path, show_col_types = FALSE) %>% 
-                as.data.frame() %>% 
-                column_to_rownames(var = "pathway") %>% 
-                select(all_of(sample_names(Ps)))
+# Add PICRUSt2 predicted pathways into data set
+# Read in data, format and filter
+for(i in names(PRM$data$picrust_path)) {
 
-PathwayMockTax <- data.frame(Type = "Pathway", 
-                             Pathway = rownames(PathwayTab), 
-                             Rownames = rownames(PathwayTab)) %>% 
-                    column_to_rownames(var = "Rownames") %>% 
-                    as.matrix()
+  PathwayTab <- read_tsv(PRM$data$picrust_path[i],
+                         show_col_types = FALSE) %>%
+                  as.data.frame() %>%
+                  column_to_rownames(var = colnames(.)[1]) %>%
+                  select(all_of(sample_names(Ps)))
 
-# Trim samples 
-PsPathway <- phyloseq(otu_table = otu_table(PathwayTab, taxa_are_rows = TRUE), 
-                      sample_data = sample_data(Ps), 
-                      tax_table = tax_table(PathwayMockTax))
+  PathwayMockTax <- data.frame(Type = i,
+                               ID = rownames(PathwayTab),
+                               Rownames = rownames(PathwayTab)) %>%
+                      column_to_rownames(var = "Rownames") %>%
+                      as.matrix()
 
-DataComb[["all"]][["ps"]][["pathways"]][["count"]] <- PsPathway
-#===============================================================================
+  # Trim samples
+  PsPathway <- phyloseq(otu_table = otu_table(PathwayTab, taxa_are_rows = TRUE),
+                        sample_data = sample_data(Ps),
+                        tax_table = tax_table(PathwayMockTax))
+
+  DataComb[["all"]][["ps"]][[i]][["count"]] <- PsPathway
+
+}
+#-------------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
 # Create filtered subsets
@@ -221,8 +220,8 @@ for(i in 1:nrow(NormGrid)) {
 #-------------------------------------------------------------------------------
 PlotsAttr <- list(color_gr = setNames(c("#377EB8", "red4"), 
                                     unique(MetaFilt$Group)), 
-                  shape_cid = setNames(c(15:18), 
-                                       na.omit(unique(MetaFilt$CID))), 
+                  shape_cid = setNames(c(16, 15, 17, 18), 
+                                       sort(na.omit(unique(MetaFilt$CID)))), 
                   color_country = setNames(brewer.pal(4, "Set3"), 
                                            unique(MetaFilt$Country)))
 

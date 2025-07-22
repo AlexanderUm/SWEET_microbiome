@@ -90,6 +90,34 @@ ggsave(filename = paste0(DirOut, "/Response_ind.png"),
        plot = RespSumPlot, width = 7, height = 3.5)
 
 
+#===============================================================================
+# Formatting and writing out data about responders and non-responders 
+# for publication: datafigures -> extanded figur 1A. 
+
+bind_rows(
+  RespDfPlot %>% 
+    filter(!is.na(Index)) %>% 
+    summarise(Mean = mean(Index), 
+              SD = sd(Index), 
+              .by = c(Group, Name)) %>% 
+    mutate(Response = "Overall"),
+
+  RespDfPlot %>% 
+    filter(!is.na(Index)) %>% 
+    summarise(Mean = mean(Index), 
+              SD = sd(Index), 
+              .by = c(Group, Name, Response))
+) %>% 
+  mutate(across(c(Mean, SD), function(x){sprintf("%.3f", round(x, 3))})) %>% 
+  mutate(Experssion = paste0(Mean, "\u00B1", SD)) %>% 
+  filter(!is.na(Response)) %>% 
+  select(Name, Group, Response, Experssion) %>% 
+  arrange(Name, Group, Response) %>% 
+  pivot_wider(names_from = Response, values_from = Experssion) %>% 
+  select(Name, Group, Overall, Resp, NonResp) %>% 
+  write_tsv(paste0(DirOut, "/Response_ind_summary.tsv"))
+#-------------------------------------------------------------------------------
+
 #-------------------------------------------------------------------------------
 # Add Response data to original metadata 
 #-------------------------------------------------------------------------------
@@ -120,5 +148,5 @@ RespData <- list("Resp_data" = RespDf,
 save(list = c("RespData"), 
      file = paste0(PRM$data$out_dir, "/4_Resp.Rdata"))
 
-# rm(list = ls())
-# gc()
+rm(list = ls())
+gc()

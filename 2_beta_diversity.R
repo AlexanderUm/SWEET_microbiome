@@ -62,6 +62,8 @@ for(i in 1:nrow(GridBeta)) {
   #-----------------------------------------------------------------------------
   # Build RDAs & Plot 
   #-----------------------------------------------------------------------------
+  StatResComb <- NULL
+  
   for(j in 1:nrow(GridRda)) {
     
     jSampleSet <- GridRda[j, "samples_set"]
@@ -95,7 +97,7 @@ for(i in 1:nrow(GridBeta)) {
     AxisExpl <- round(RdaObjSummary$cont$importance[2, 1:2]*100, 2)
     
     # Extract scores
-    AxisScore <- RdaObjSummary$sites[, 1:2] %>%
+    AxisScore <- scores(RdaObj, display = "sites")[, 1:2] %>%
                             as.data.frame() %>%
                             bind_cols(Meta) %>% 
                             arrange(Subject, Time)
@@ -152,16 +154,26 @@ for(i in 1:nrow(GridBeta)) {
     #---------------------------------------------------------------------------
     BetaRes[[jSampleSet]][[iTaxaLvl]][[iCountNorm]][[jDist]][["plot"]] <- BetaPlot
     
-    BetaRes[[jSampleSet]][[iTaxaLvl]][[iCountNorm]][[jDist]][["stat"]] <- RdaStat
+    RdaStatDf <- RdaStat %>% 
+                    as.data.frame() %>% 
+                    mutate(Explained = SumOfSqs/sum(SumOfSqs)) %>% 
+                    mutate(across(everything(), function(x){round(x, 5)})) %>% 
+                    bind_cols(GridBeta[i, ], GridRda[j, ]) %>% 
+                    rownames_to_column(var = "Terms")
     
-    RdaStat %>% 
-      tidy() %>% 
-      bind_cols(GridBeta[i, ], GridRda[j, ]) %>% 
-      write.csv(file = paste0(DirOut, "/tabs/", 
-                              paste(GridBeta[i, ], collapse = "-"), 
-                              "/", gsub(" ", "_", jDist), "--", 
-                              jSampleSet, "--stat.csv")) %>% 
-      suppressWarnings()
+    StatResComb <- RdaStatDf %>% 
+                    add_row() %>% 
+                    bind_rows(StatResComb, .)
+    
+    write.csv(RdaStatDf, 
+              file = paste0(DirOut, "/tabs/", 
+                            paste(GridBeta[i, ], collapse = "-"), 
+                                  "/", gsub(" ", "_", jDist), "--", 
+                                  jSampleSet, "--stat.csv"), 
+              row.names = FALSE, na = "") 
+    
+    BetaRes[[jSampleSet]][[iTaxaLvl]][[iCountNorm]][[jDist]][["stat"]] <- RdaStatDf
+    
     
     ggsave(filename = paste0(DirOut, "/plots/", 
                              paste(GridBeta[i, ], collapse = "-"), 
@@ -170,6 +182,12 @@ for(i in 1:nrow(GridBeta)) {
            plot = BetaPlot, width = 5, height = 3.5)
     
   }
+  
+  write.csv(StatResComb, 
+            file = paste0(DirOut, "/tabs/", 
+                          paste(GridBeta[i, ], collapse = "-"), 
+                          "/Combined_stat.csv"), 
+            row.names = FALSE, na = "") 
   
 }
 
@@ -194,7 +212,9 @@ FullGrid <- plot_grid(PlotGrid0, NULL,
                       ncol = 3, 
                       rel_widths = c(1, 0.001, 0.1))
 
-save_plot(filename = paste0(DirOut, "/plots/dbRDA.png"), 
+save_plot(filename = paste0(DirOut, "/plots/Figure_3.tiff"), 
+          compression = "lzw",
+          dpi = 300,
           plot = FullGrid, 
           base_width = 10.5, 
           base_height = 7.5) 

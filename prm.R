@@ -18,9 +18,9 @@ PRM[["general"]] <- list("cols" = list("GroupFac"= "Group",
 
 # Data preparation
 PRM[["data"]] <- list("out_dir" = "out/Rdata",
-                      "qiime_path" = "data/qiime2/", 
-                      "meta_path" = "data/meta_comb_to_check_mss(24)_MP_12032024_MMS.csv", 
-                      "picrust_path" = "data/picrust_res/picrust/pathways_out/path_abun_unstrat.tsv", 
+                      "qiime_path" = "data/", 
+                      "meta_path" = "data/meta_data.csv", 
+                      "picrust_path" = c("MetaCys" = "data/path_abun_unstrat.tsv"),
                       "min_reads_per_taxa" = 50, 
                       "glom_lvls" = c("Genus", "Family"), 
                       "glom_NArm" = TRUE,
@@ -58,9 +58,9 @@ PRM[["beta"]] <- list("out_dir" = "out/beta",
                       "p_group" = "Subject")
 
 
-PRM[["DA"]] <- list("out_dir" = "out/DA_rev1", 
-                    "taxa_lvl" = c("Genus", "Family", "pathways"), 
-                    "data_set" = c("all", "no_M0"),
+PRM[["DA"]] <- list("out_dir" = "out/DA_rev1.1", 
+                    "taxa_lvl" = c("Genus", "Family", "MetaCys"), # "Genus", "Family", "MetaCys", "KO", "KEGG"
+                    "data_set" = c("all"),
                     "count_norm" = c("count"),
                     "count_norm_plot" = c("CSS_log2"),
                     "time_var" = "Time", 
