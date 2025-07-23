@@ -59,7 +59,7 @@ PRM[["beta"]] <- list("out_dir" = "out/beta",
 
 
 PRM[["DA"]] <- list("out_dir" = "out/DA_rev1.1", 
-                    "taxa_lvl" = c("Genus", "Family", "MetaCys"), # "Genus", "Family", "MetaCys", "KO", "KEGG"
+                    "taxa_lvl" = c("Genus", "Family", "MetaCys"),
                     "data_set" = c("all"),
                     "count_norm" = c("count"),
                     "count_norm_plot" = c("CSS_log2"),
@@ -84,8 +84,7 @@ PRM[["resp"]][["calc"]] <- list("Body_weight" =
                                   list("index_fun" = "index_cid4_cid2_fun", 
                                        "resp_fun" = "resp_morethan0_fun"))
 
-PRM[["resp"]][["RF"]] <- list("data_set_long" = c("all", "CIDs_3"), 
-                              "data_set_cross" = c("CID_1", "CID_2", 
+PRM[["resp"]][["RF"]] <- list("data_set_cross" = c("CID_1", "CID_2", 
                                                    "CID_3", "CID_4"),
                               "taxa_lvl" = c("Genus"), 
                               "group_lvls" = c("S&SEs", "Sugar"), 
