@@ -16,6 +16,8 @@ source("R/response_functions.R")
 # Create directory 
 DirOut <- PRM$resp$out_dir
 
+dir.create(DirOut, showWarnings = FALSE, recursive = FALSE)
+
 #-------------------------------------------------------------------------------
 # Define responders and non-responders 
 #-------------------------------------------------------------------------------
