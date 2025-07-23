@@ -8,12 +8,13 @@ PRM[["general"]] <- list("cols" = list("GroupFac"= "Group",
                                        "CountryFac" = "Country", 
                                        "SubjectFac" = "Subject"), 
                          "libs" = c("phyloseq", "tidyverse", "broom", "vegan", 
-                                    "metagenomeSeq", "qiime2R", "picante", "phangorn", 
-                                    "MicrobiomeStat", "ggvegan", "ggpmisc", 
+                                    "metagenomeSeq", "qiime2R",
+                                    "MicrobiomeStat", "ggvegan", 
                                     "Maaslin2", "ComplexHeatmap", 
                                     "rfPermute", "caret", "randomForest", 
-                                    "pROC", "cowplot", "ggvenn", "lme4"), 
-                         "seed" = 394573)
+                                    "pROC", "cowplot", "lme4"), 
+                         "seed" = 394573, 
+                         "round_to" = 4)
 
 
 # Data preparation
@@ -30,7 +31,7 @@ PRM[["data"]] <- list("out_dir" = "out/Rdata",
 
 
 # Alpha diversity 
-PRM[["alpha"]] <- list("out_dir" = "out/alpha_rev1", 
+PRM[["alpha"]] <- list("out_dir" = "out/alpha_diversity", 
                        "alpha_ind" = c("shannon", "simpson", 
                                        "observed_species", "chao1"), 
                        "taxa_lvl" = "ASV_alpha", 
@@ -42,7 +43,7 @@ PRM[["alpha"]] <- list("out_dir" = "out/alpha_rev1",
                        "adjust_var" = "Country")
 
 
-PRM[["beta"]] <- list("out_dir" = "out/beta", 
+PRM[["beta"]] <- list("out_dir" = "out/beta_diversity", 
                       "taxa_lvl" = c("ASV"), 
                       "data_set" = c("all"),
                       "count_norm" = c("TSS_log2"),
@@ -58,7 +59,7 @@ PRM[["beta"]] <- list("out_dir" = "out/beta",
                       "p_group" = "Subject")
 
 
-PRM[["DA"]] <- list("out_dir" = "out/DA_rev1.1", 
+PRM[["DA"]] <- list("out_dir" = "out/DA", 
                     "taxa_lvl" = c("Genus", "Family", "MetaCys"),
                     "data_set" = c("all"),
                     "count_norm" = c("count"),
@@ -99,10 +100,6 @@ PRM[["resp"]][["RF"]] <- list("data_set_cross" = c("CID_1", "CID_2",
                               "cv_repeats" = 25, 
                               "n_rf_permute" = 199, 
                               "imp_max_pval" = 0.05)
-
-PRM[["overview"]] <- list("out_dir" = "out/overview", 
-                          "da_taxa_lvl" = c("Genus"), 
-                          "da_data_set" = c("all"))
 
 save(list = c("PRM"), file = "PRM.Rdata")
 

@@ -16,10 +16,6 @@ source("R/response_functions.R")
 # Create directory 
 DirOut <- PRM$resp$out_dir
 
-dir.create(paste0(DirOut, "/plots"), recursive = TRUE, showWarnings = FALSE)
-dir.create(paste0(DirOut, "/tabs"), recursive = TRUE, showWarnings = FALSE)
-
-
 #-------------------------------------------------------------------------------
 # Define responders and non-responders 
 #-------------------------------------------------------------------------------
@@ -92,7 +88,7 @@ ggsave(filename = paste0(DirOut, "/Response_ind.png"),
 
 #===============================================================================
 # Formatting and writing out data about responders and non-responders 
-# for publication: datafigures -> extanded figur 1A. 
+# for publication: datafigures -> extended figure 1A. 
 
 bind_rows(
   RespDfPlot %>% 
