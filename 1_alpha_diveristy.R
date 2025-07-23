@@ -181,11 +181,15 @@ for(i in 1:nrow(GridAlpha)) {
   
   AlphaRes[[iSampleSet]][[iTaxaLvl]][[iCountNorm]][["Plot"]] <- AlphaPlot
   
+  # Write out complete statistical output 
   Map(cbind, AlphaTestRes, Index=names(AlphaTestRes)) %>% 
+    lapply(., function(x){add_row(x)}) %>% 
     bind_rows() %>% 
-    write.csv(., file = paste0(DirOut, "/tabs/AlphaLinDa_", 
+    mutate(across(where(is.numeric), 
+                  function(x){round(x, PRM$general$round_to)})) %>% 
+    write_tsv(., file = paste0(DirOut, "/tabs/AlphaLinDa_", 
                                iSampleSet, "_", iTaxaLvl, "_", 
-                               iCountNorm, ".csv"))
+                               iCountNorm, ".tsv"), na = "", )
   
   ggsave(filename = paste0(DirOut, "/plots/AlphaLinDa_", 
                            iSampleSet, "_", iTaxaLvl, "_", 
