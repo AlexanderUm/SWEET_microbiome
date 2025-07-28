@@ -20,3 +20,5 @@ This is a complete microbiota and primary outcomes analysis pipeline. To reprodu
 This repository contains all data and scripts to reproduce all figures and tables (limited formatting options) related to microbiome analysis. To reproduce results, clone the repository and run "run_all.R". Alternatively, scripts can be run separately; however, firstly, the "prm.R" and then "0_data_prep.R" should be executed.  
 <br />
 The information about package versions can be found in the "sessionInfo.txt" file. In addition, the files for the automatic setting of the environment with "renv" package are provided. 
+<br />
+Note the full pipeline can take several hours to run. 
